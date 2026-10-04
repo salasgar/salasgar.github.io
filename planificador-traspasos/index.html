@@ -171,10 +171,10 @@ function el(tag, attrs, parent, text) {
 }
 
 // ---------- Estado ----------
-function estadoVacio() { return { fondos: {}, ordenes: {}, nuevos: [], colores: {}, ejemplo: false, reembolso: null }; }
+function estadoVacio() { return { fondos: {}, ordenes: {}, nuevos: [], colores: {}, ejemplo: false, reembolso: null, excluidos: [], minV3: null }; }
 
 function guardar() {
-  const limpio = (k, v) => ["g", "p", "x0", "ga", "n", "rect", "sel", "caja", "pintarGrupos", "pintarUmbral", "pintarSel", "vl", "valor", "lat", "coste", "aprox"].includes(k) ? undefined : v;
+  const limpio = (k, v) => ["g", "p", "x0", "ga", "n", "rect", "sel", "caja", "pintarGrupos", "pintarUmbral", "pintarSel", "vl", "valor", "lat", "coste", "aprox", "fondo", "fin", "obj"].includes(k) ? undefined : v;
   try { localStorage.setItem(CLAVE, JSON.stringify(S, limpio)); } catch (_) {}
 }
 function cargarEstado() {
@@ -188,11 +188,11 @@ function cargarEstado() {
 function estadoEjemplo() {
   // Dos fondos inventados con aportaciones semanales; el precio sigue una senda suave con un bache
   const s = estadoVacio(); s.ejemplo = true;
-  let semilla = 7;
+  let semilla = 3;
   const azar = () => { semilla = (semilla * 48271) % 2147483647; return semilla / 2147483647; };
   const fondo = (isin, nombre, semanas, importe, vlHoy, deriva) => {
     const senda = []; let vl = 1;
-    for (let i = semanas; i > 0; i--) { vl *= Math.exp(deriva / 52 + (azar() - 0.5) * 0.05 + (i > 60 && i < 75 ? -0.012 : 0) + (i < 15 ? -0.004 : 0)); senda.push(vl); }
+    for (let i = semanas; i > 0; i--) { vl *= Math.exp(deriva / 52 + (azar() - 0.5) * 0.025 + (i > 60 && i < 75 ? -0.012 : 0) + (i < 15 ? -0.004 : 0)); senda.push(vl); }
     const escala = vlHoy / (vl * Math.exp(deriva / 52));   // el precio de hoy es el último de la senda, un poco por encima
     const lotes = [], hoy = new Date(Date.UTC(2026, 8, 27));
     senda.forEach((p, k) => {
@@ -201,8 +201,8 @@ function estadoEjemplo() {
     });
     s.fondos[isin] = { isin, nombre, lotes, vlManual: null, partManual: null, vlOrd: vlHoy, cortes: [], destinos: [QUEDA], umbral: null, archivo: "ejemplo" };
   };
-  fondo("XX0000000001", "Fondo de ejemplo A (renta variable global)", 156, 250, 18.4, 0.11);
-  fondo("XX0000000002", "Fondo de ejemplo B (emergentes)", 78, 100, 9.7, 0.06);
+  fondo("XX0000000001", "Fondo de ejemplo A (renta variable global)", 156, 250, 18.4, 0.15);
+  fondo("XX0000000002", "Fondo de ejemplo B (emergentes)", 78, 100, 9.7, 0.09);
   return s;
 }
 
@@ -374,27 +374,7 @@ function grupos(f) {
 // los tramos consecutivos de la misma banda forman grupos. Un tramo que no llega al importe mínimo se funde con sus vecinos y el
 // grupo resultante se clasifica por su plusvalía media: un lote grande puede ir solo, y los lotes pequeños no merecen un traspaso aparte.
 const bandaDe = (f, p) => f.umbral.ts.filter(t => p >= t).length;
-function tramosPorUmbral(f) {
-  const { minV } = f.umbral;
-  const runs = [];
-  f.lotes.forEach((l, i) => {
-    const b = bandaDe(f, l.p), u = runs[runs.length - 1];
-    if (u && u.b === b) u.i1 = i; else runs.push({ b, i0: i, i1: i });
-  });
-  const n = r => { let v = 0; for (let i = r.i0; i <= r.i1; i++) v += f.lotes[i].v; return v; };
-  const media = r => { let v = 0, g = 0; for (let i = r.i0; i <= r.i1; i++) { v += f.lotes[i].v; g += f.lotes[i].g; } return v ? 100 * g / v : 0; };
-  while (runs.length > 1) {
-    let k = -1;
-    runs.forEach((r, j) => { if (n(r) < minV && (k < 0 || n(r) < n(runs[k]))) k = j; });
-    if (k < 0) break;
-    const a = Math.max(0, k - 1), b = Math.min(runs.length - 1, k + 1);
-    const unido = { i0: runs[a].i0, i1: runs[b].i1 };
-    unido.b = bandaDe(f, media(unido));
-    runs.splice(a, b - a + 1, unido);
-    for (let j = 0; j + 1 < runs.length;) { if (runs[j].b === runs[j + 1].b) { runs[j].i1 = runs[j + 1].i1; runs.splice(j + 1, 1); } else j++; }
-  }
-  return runs;
-}
+function tramosPorUmbral(f) { return segmentar(f.lotes, p => bandaDe(f, p), f.umbral.minV); }
 function minPorDefecto(f) {            // un 5 % del valor del fondo, redondeado a una cifra
   const x = f.valor / 20, p = Math.pow(10, Math.floor(Math.log10(Math.max(x, 1))));
   return Math.max(10, Math.round(x / p) * p);
@@ -945,28 +925,228 @@ function planReembolso(fondos, X) {
   return { usados: h.filter(x => x.n), falta };
 }
 
+// ---------- Simulación 3: reembolso con traspasos antes y después ----------
+// Los fondos incluidos se tratan como intercambiables. Se calcula el reparto ideal de los lotes por plusvalía: los X € de menor
+// plusvalía se reembolsan y el resto se ordena por bandas, una por fondo (el de menor plusvalía media, la banda más baja), con el
+// capital original de cada fondo. Como los traspasos son FIFO, cada fondo se trabaja por tramos consecutivos (los tramos pequeños se
+// funden con sus vecinos, como en la herramienta de umbrales). Fase 1: juntar en el fondo R de la banda baja los tramos a reembolsar,
+// apartando lo que estorba a su fondo definitivo o a un fondo auxiliar vacío. Reembolso. Fase 2: recolocar los tramos en sus bandas
+// y ajustar el reparto de capital con algún traspaso más. Los lotes llegan al destino intercalados por fecha y pueden partirse.
+const AUX = "__aux";
+function segmentar(lotes, clase, minV) {
+  const runs = [];
+  lotes.forEach((l, i) => { const b = clase(l.p), u = runs[runs.length - 1]; if (u && u.b === b) u.i1 = i; else runs.push({ b, i0: i, i1: i }); });
+  const n = r => { let v = 0; for (let i = r.i0; i <= r.i1; i++) v += lotes[i].v; return v; };
+  const media = r => { let v = 0, g = 0; for (let i = r.i0; i <= r.i1; i++) { v += lotes[i].v; g += lotes[i].v - lotes[i].c; } return v ? 100 * g / v : 0; };
+  while (runs.length > 1) {
+    let k = -1;
+    runs.forEach((r, j) => { if (n(r) < minV && (k < 0 || n(r) < n(runs[k]))) k = j; });
+    if (k < 0) break;
+    const a = Math.max(0, k - 1), b = Math.min(runs.length - 1, k + 1);
+    const unido = { i0: runs[a].i0, i1: runs[b].i1 };
+    unido.b = clase(media(unido));
+    runs.splice(a, b - a + 1, unido);
+    for (let j = 0; j + 1 < runs.length;) { if (runs[j].b === runs[j + 1].b) { runs[j].i1 = runs[j + 1].i1; runs.splice(j + 1, 1); } else j++; }
+  }
+  runs.forEach(r => { r.v = n(r); r.media = media(r); });
+  return runs;
+}
+function simularConTraspasos(base, X, minV) {
+  const est = base.map(r => ({ id: r.id, nombre: r.nombre, vl: r.vl, aprox: r.aprox,
+    lotes: r.lotes.map(l => ({ f: l.f, c: l.c, v: l.v, p: l.v ? 100 * (l.v - l.c) / l.v : 0 })) }));
+  const aux = { id: AUX, nombre: "Fondo auxiliar C (vacío)", vl: null, aprox: false, lotes: [] };
+  const fondos = [...est, aux];
+  const valor = f => f.lotes.reduce((s, l) => s + l.v, 0);
+  const media = f => { const v = valor(f); return v ? 100 * f.lotes.reduce((s, l) => s + l.v - l.c, 0) / v : 0; };
+  const T = est.reduce((s, f) => s + valor(f), 0);
+  if (X >= T - 0.005) return { error: `El importe supera el valor de los fondos incluidos (${eur(T, 2)}).` };
+  est.forEach(f => { f.v0 = valor(f); f.cuota = f.v0 / T; f.media0 = media(f); });
+  fondos.forEach(f => f.lotes.forEach(l => { l.fondo = f; }));
+  const todos = () => fondos.flatMap(f => f.lotes);
+  const partir = (l, vParte) => {                       // dos lotes con la misma fecha, en la misma posición
+    const fr = vParte / l.v, f = l.fondo, i = f.lotes.indexOf(l);
+    const a = Object.assign({}, l, { v: l.v * fr, c: l.c * fr }), b = Object.assign({}, l, { v: l.v - a.v, c: l.c - a.c });
+    f.lotes.splice(i, 1, a, b); return [a, b];
+  };
+  // 1. Umbrales: los lotes ordenados por plusvalía llenan primero el reembolso (X) y luego la banda de cada fondo (su capital original)
+  const orden = est.slice().sort((a, b) => a.media0 - b.media0), Tf = T - X;
+  orden.forEach((f, j) => { f.banda = j; f.objetivo = f.cuota * Tf; });
+  const tamanos = [X, ...orden.map(f => f.objetivo)], umbrales = [];
+  let j = 0, cabe = tamanos[0];
+  todos().slice().sort((a, b) => a.p - b.p).forEach(l => {
+    cabe -= l.v;
+    while (cabe <= 0.005 && j < tamanos.length - 1) { umbrales.push(l.p); j++; cabe += tamanos[j]; }
+  });
+  const clase = p => umbrales.filter(u => p >= u).length;        // 0 = a reembolsar, 1..k = banda 0..k−1
+  // 2. Tramos por fondo y lotes a reembolsar: los tramos de menor plusvalía media hasta X (el último, parcial, por su parte más antigua)
+  const tramos = est.flatMap(f => segmentar(f.lotes, clase, minV).map(r => Object.assign(r, { f, lotes: f.lotes.slice(r.i0, r.i1 + 1) })));
+  tramos.forEach(t => t.lotes.forEach(l => { l.fin = orden[Math.max(0, t.b - 1)]; }));
+  let falta = X;
+  for (const t of tramos.slice().sort((a, b) => a.media - b.media)) {
+    if (falta <= 0.005) break;
+    for (const l of t.lotes) {
+      if (falta <= 0.005) break;
+      if (l.v <= falta + 0.005) { l.red = true; falta -= l.v; } else { partir(l, falta)[0].red = true; falta = 0; }
+    }
+  }
+  // 2b. Cuadrar el reparto de capital reasignando tramos (o parte) a la banda vecina: los de plusvalía más cercana al umbral.
+  // Así el reparto lo hacen los mismos traspasos de la ordenación y no hace falta mover después lotes al azar.
+  const restos = est.flatMap(f => {                     // tramos de lotes no reembolsados, consecutivos y con el mismo destino
+    const out = []; let u = null;
+    f.lotes.forEach(l => { if (l.red) { u = null; return; } if (u && u.fin === l.fin) u.lotes.push(l); else { u = { f, fin: l.fin, lotes: [l] }; out.push(u); } });
+    return out;
+  });
+  const vTramo = t => t.lotes.reduce((s, l) => s + l.v, 0), mTramo = t => { const v = vTramo(t); return v ? 100 * t.lotes.reduce((s, l) => s + l.v - l.c, 0) / v : 0; };
+  for (let it = 0; it < 60; it++) {
+    const asignado = new Map(orden.map(f => [f, 0]));
+    restos.forEach(t => asignado.set(t.fin, asignado.get(t.fin) + vTramo(t)));
+    const desv = f => asignado.get(f) - f.objetivo;
+    const O = orden.reduce((a, f) => desv(f) > desv(a) ? f : a), U = orden.reduce((a, f) => desv(f) < desv(a) ? f : a);
+    const q = Math.min(desv(O), -desv(U));
+    if (q <= 0.002 * Tf) break;
+    // la banda de U está por encima o por debajo de la de O: el tramo de O con plusvalía más cercana a la banda de U
+    const haciaArriba = U.banda > O.banda, cands = restos.filter(t => t.fin === O && t.lotes.length);
+    if (!cands.length) break;
+    const t = cands.reduce((a, b) => (haciaArriba ? mTramo(b) > mTramo(a) : mTramo(b) < mTramo(a)) ? b : a);
+    if (vTramo(t) <= q + 0.005) { t.fin = U; t.lotes.forEach(l => { l.fin = U; }); continue; }
+    // hay que partir el tramo: se lleva la parte (por el principio o por el final) cuya plusvalía se acerca más a la banda de U
+    const corte = (desdeInicio) => {
+      const ls = desdeInicio ? t.lotes.slice() : t.lotes.slice().reverse(); let acc = 0; const sel = [];
+      for (const l of ls) { if (acc >= q - 0.005) break; if (l.v <= q - acc + 0.005) { sel.push(l); acc += l.v; } else { const [x, y] = partir(l, q - acc); const i = t.lotes.indexOf(l); t.lotes.splice(i, 1, ...(desdeInicio ? [x, y] : [x, y])); sel.push(desdeInicio ? x : y); acc = q; } }
+      return sel;
+    };
+    const media = ls => { const v = ls.reduce((s, l) => s + l.v, 0); return v ? 100 * ls.reduce((s, l) => s + l.v - l.c, 0) / v : 0; };
+    const ini = t.lotes.slice(0, Math.max(1, Math.round(t.lotes.length * Math.min(1, q / vTramo(t))))), fin = t.lotes.slice(-ini.length);
+    const sel = corte(haciaArriba ? media(ini) >= media(fin) : media(ini) <= media(fin));
+    sel.forEach(l => { l.fin = U; });
+    const resto = t.lotes.filter(l => !sel.includes(l)); t.lotes = resto;
+    restos.push({ f: t.f, fin: U, lotes: sel });
+  }
+  // 3. Fase 1: juntar en R los lotes a reembolsar, moviendo solo lo que estorba
+  const R = orden[0];
+  const fmaxFuera = todos().filter(l => l.red && l.fondo !== R).reduce((m, l) => l.f > m ? l.f : m, "");   // último lote a reembolsar que llegará de fuera
+  todos().forEach(l => { l.obj = l.red ? R : l.fondo; });
+  est.forEach(f => {
+    let iUlt = -1; f.lotes.forEach((l, i) => { if (l.red) iUlt = i; });
+    f.lotes.forEach((l, i) => {
+      if (l.red) return;
+      if (i < iUlt || (f === R && l.f <= fmaxFuera)) l.obj = (l.fin === f || l.fin === R) ? aux : l.fin;   // estorba: quedaría delante de un lote a reembolsar
+    });
+  });
+  const pasos1 = [], pasos2 = [];
+  const hecho1 = () => {                                // R empieza por todos los lotes a reembolsar y nada se les adelanta
+    const red = todos().filter(l => l.red);
+    if (red.some(l => l.fondo !== R)) return false;
+    let i = 0; while (i < R.lotes.length && R.lotes[i].red) i++;
+    return i === red.length;
+  };
+  const ok1 = ordenar(fondos, aux, l => l.obj, pasos1, l => l.red ? R : l.fin || R, hecho1);
+  // 4. Reembolso de X desde R (por FIFO)
+  falta = X; const sacados = [];
+  while (falta > 0.005 && R.lotes.length) {
+    const l = R.lotes[0];
+    if (l.v <= falta + 0.005) { R.lotes.shift(); sacados.push(l); falta -= l.v; }
+    else { partir(l, falta); sacados.push(R.lotes.shift()); falta = 0; }
+  }
+  const reemb = { fondo: R, n: sacados.length, v: sacados.reduce((s, l) => s + l.v, 0), g: sacados.reduce((s, l) => s + l.v - l.c, 0),
+    np: R.vl ? sacados.reduce((s, l) => s + l.v, 0) / R.vl : null, optimo: sacados.every(l => l.red) };
+  // 5. Fase 2: recolocar por bandas y ajustar el reparto de capital
+  todos().forEach(l => { l.obj = l.fin || R; });
+  const ok2 = ordenar(fondos, aux, l => l.obj, pasos2);
+  for (let k = 0; k < est.length; k++) {
+    const desv = f => valor(f) - f.objetivo;
+    const sobra = est.reduce((a, f) => desv(f) > desv(a) ? f : a), faltaF = est.reduce((a, f) => desv(f) < desv(a) ? f : a);
+    const q = Math.min(desv(sobra), -desv(faltaF));
+    if (q <= 0.005 * Tf) break;
+    let resto = q, n = 0; const movidos = [];
+    while (resto > 0.005 && sobra.lotes.length) {
+      const l = sobra.lotes[0];
+      if (l.v <= resto + 0.005) { movidos.push(sobra.lotes.shift()); resto -= l.v; } else { partir(l, resto); movidos.push(sobra.lotes.shift()); resto = 0; }
+    }
+    movidos.forEach(l => { l.o = l.o || sobra.nombre; l.fondo = faltaF; l.obj = faltaF; });
+    faltaF.lotes.push(...movidos); faltaF.lotes.sort((a, b) => a.f < b.f ? -1 : a.f > b.f ? 1 : 0);
+    const v = movidos.reduce((s, l) => s + l.v, 0);
+    pasos2.push({ de: sobra, a: faltaF, n: movidos.length, v, c: movidos.reduce((s, l) => s + l.c, 0), g: movidos.reduce((s, l) => s + l.v - l.c, 0),
+      np: sobra.vl ? v / sobra.vl : null, aprox: sobra.aprox, fmin: movidos[0].f, fmax: movidos[movidos.length - 1].f, ajuste: true });
+  }
+  est.forEach(f => { f.vFin = valor(f); f.mediaFin = media(f); f.cuotaFin = f.vFin / (Tf || 1); });
+  return { est, aux, pasos1, pasos2, reemb, completo: ok1 && ok2, usaAux: [...pasos1, ...pasos2].some(p => p.a === aux), umbrales: umbrales.slice(1), T, Tf };
+}
+
+// Ordenación voraz por traspasos FIFO hacia un objetivo por lote. Mueve el tramo delantero de un fondo cuando no está en su sitio y
+// al llegar no se pone delante de lotes mal colocados del destino; si nada se puede mover, aparca en el auxiliar la cabeza de un fondo
+// que tenga lotes mal colocados detrás; los lotes aparcados vuelven cuando su fondo está limpio.
+function ordenar(fondos, aux, obj, pasos, futuro, hecho) {
+  // futuro: destino que tendrá cada lote en una fase posterior; evita que un tramo se coloque delante de lotes que después habrá que sacar
+  const sucios = f => f.lotes.filter(l => obj(l) !== f);
+  const estorbos = (f, r) => f.lotes.filter(l => obj(l) !== f || (futuro && !r.red && futuro(l) !== f));
+  const cabeza = f => {
+    if (!f.lotes.length) return null;
+    const t = obj(f.lotes[0]); let n = 0;
+    while (n < f.lotes.length && obj(f.lotes[n]) === t) n++;
+    const lotes = f.lotes.slice(0, n);
+    return { f, t, n, lotes, fmin: lotes[0].f, fmax: lotes[n - 1].f, v: lotes.reduce((s, l) => s + l.v, 0), red: !!lotes[0].red };
+  };
+  const bloquea = r => { const s = estorbos(r.t, r); return s.length > 0 && r.fmin <= s.reduce((m, l) => l.f > m ? l.f : m, ""); };
+  const mover = (r, destino, aparcar) => {
+    const lotes = r.f.lotes.splice(0, r.n);
+    lotes.forEach(l => { l.o = l.o || (l.fondo.id === AUX ? l.o : l.fondo.nombre); l.fondo = destino; });
+    destino.lotes.push(...lotes); destino.lotes.sort((a, b) => a.f < b.f ? -1 : a.f > b.f ? 1 : 0);
+    pasos.push({ de: r.f, a: destino, n: r.n, v: r.v, c: lotes.reduce((s, l) => s + l.c, 0), g: lotes.reduce((s, l) => s + l.v - l.c, 0),
+      np: r.f.vl ? r.v / r.f.vl : null, aprox: r.f.aprox, fmin: r.fmin, fmax: r.fmax, aparcar });
+  };
+  for (let it = 0; it < 400; it++) {
+    if (hecho && hecho()) return true;
+    const runs = fondos.map(cabeza).filter(r => r && r.t !== r.f).sort((a, b) => a.fmin < b.fmin ? -1 : a.fmin > b.fmin ? 1 : 0);
+    if (!runs.length && fondos.every(f => !sucios(f).length)) return true;
+    const libre = runs.find(r => !bloquea(r));
+    if (libre) { mover(libre, libre.t, false); continue; }
+    const parkables = fondos.filter(f => f !== aux && f.lotes.length && obj(f.lotes[0]) === f && sucios(f).length).map(cabeza).sort((a, b) => a.v - b.v);
+    if (parkables.length) { mover(parkables[0], aux, true); continue; }
+    // Bloqueo mutuo (cabezas mal colocadas que se estorban entre sí): se aparca en el auxiliar una de ellas, preferentemente
+    // la del fondo al que quiere ir la cabeza del auxiliar, para desbloquearla
+    const bloqueadas = runs.filter(r => r.f !== aux), cabAux = runs.find(r => r.f === aux);
+    const elegida = (cabAux && bloqueadas.find(r => r.f === cabAux.t)) || bloqueadas.sort((a, b) => a.v - b.v)[0];
+    if (elegida) { mover(elegida, aux, true); continue; }
+    return false;
+  }
+  return false;
+}
+
 function reembolsoUI() {
   const c = document.getElementById("reembolso"); c.replaceChildren();
   el("h2", {}, c, "Reembolso");
-  const fondos = resultado();
-  if (!fondos.length) { el("p", { class: "sub" }, c, "No hay fondos."); return; }
-  const hayPlan = fondos.some(r => r.cambia);
-  el("p", { class: "sub" }, c, `Sobre los fondos ${hayPlan ? "tal como quedan tras el plan" : "tal como están ahora"}: de cuáles reembolsar para aflorar la menor plusvalía posible. En cada paso se toma, entre los lotes que saldrían primero por FIFO de cada fondo, el de menor plusvalía en %.`);
+  const todosF = resultado();
+  if (!todosF.length) { el("p", { class: "sub" }, c, "No hay fondos."); return; }
+  const hayPlan = todosF.some(r => r.cambia);
+  el("p", { class: "sub" }, c, `Sobre los fondos ${hayPlan ? "tal como quedan tras el plan" : "tal como están ahora"}. Tres simulaciones: sacar el dinero de varios fondos tal como están, sacarlo todo de un solo fondo, y hacer traspasos antes y después para pagar lo mínimo y dejar la cartera con el mismo reparto que ahora.`);
   const fila = el("div", { class: "vl", style: "margin-top:8px" }, c);
   const l = el("label", {}, fila, "Necesito ");
   const i = el("input", { type: "number", step: "100", min: "0", id: "reembolso-importe", value: S.reembolso ?? "", placeholder: "importe" }, l); l.append(" €");
   i.addEventListener("change", () => { S.reembolso = parseFloat(i.value) || null; cambio(); });
+  const inc = el("div", { class: "vl" }, c); inc.append("Fondos que entran: ");
+  S.excluidos = S.excluidos || [];
+  todosF.forEach(r => {
+    const lb = el("label", {}, inc);
+    const cb = el("input", { type: "checkbox", id: "inc-" + r.id }, lb); cb.checked = !S.excluidos.includes(r.id);
+    cb.addEventListener("change", () => { S.excluidos = S.excluidos.filter(x => x !== r.id); if (!cb.checked) S.excluidos.push(r.id); cambio(); });
+    lb.append(r.nombre);
+  });
+  const fondos = todosF.filter(r => !S.excluidos.includes(r.id));
   const X = S.reembolso;
-  if (!X) return;
+  if (!X || !fondos.length) return;
+  const conPart = fondos.some(x => x.vl);
+  const cabecera = (t, cols) => { const tc = el("div", { class: "tabla" }, c), t2 = el("table", {}, tc), cab = el("tr", {}, el("thead", {}, t2)); cols.forEach((h, k) => el("th", { class: k < 2 ? "izq" : "" }, cab, h)); return el("tbody", {}, t2); };
+  const celdaFondo = (tr, r) => { const c1 = el("td", { class: "izq" }, tr); el("i", { class: "chip", style: `background:${colorDest(r.id)}` }, c1); c1.append(r.nombre); };
+
+  // 1. De varios fondos tal como están
+  el("h3", {}, c, "1. De varios fondos, sin traspasos previos");
+  el("p", { class: "sub" }, c, "En cada paso se toma, entre los lotes que saldrían primero por FIFO de cada fondo, el de menor plusvalía en %.");
   const { usados, falta } = planReembolso(fondos, X);
-  const tc = el("div", { class: "tabla" }, c), t = el("table", {}, tc), cab = el("tr", {}, el("thead", {}, t));
-  const conPart = usados.some(x => x.r.vl);
-  ["Fondo", "Lotes"].concat(conPart ? ["Participaciones"] : [], ["Importe", "Coste", "Plusvalía", "%"]).forEach((h, k) => el("th", { class: k < 2 ? "izq" : "" }, cab, h));
-  const tb = el("tbody", {}, t);
+  const tb = cabecera("", ["Fondo", "Lotes"].concat(conPart ? ["Participaciones"] : [], ["Importe", "Coste", "Plusvalía", "%"]));
   let V = 0, G = 0;
   usados.sort((a, b) => b.v - a.v).forEach(x => {
-    const tr = el("tr", {}, tb);
-    const c1 = el("td", { class: "izq" }, tr); el("i", { class: "chip", style: `background:${colorDest(x.r.id)}` }, c1); c1.append(x.r.nombre);
+    const tr = el("tr", {}, tb); celdaFondo(tr, x.r);
     el("td", { class: "izq" }, tr, x.n + (x.parcial ? " (el último, parcial)" : ""));
     if (conPart) el("td", {}, tr, x.r.vl ? part(x.np, x.r.aprox) : "—");
     el("td", {}, tr, eur(x.v, 2)); el("td", {}, tr, eur(x.c, 2)); el("td", {}, tr, eur(x.g, 2)); el("td", {}, tr, pct(100 * x.g / x.v));
@@ -976,19 +1156,58 @@ function reembolsoUI() {
   el("td", { class: "izq" }, tt, "Total"); el("td", {}, tt); if (conPart) el("td", {}, tt);
   el("td", {}, tt, eur(V, 2)); el("td", {}, tt, eur(V - G, 2)); el("td", {}, tt, eur(G, 2)); el("td", {}, tt, V ? pct(100 * G / V) : "");
   if (falta > 0.005) el("p", { class: "sub aviso" }, c, `Faltan ${eur(falta, 2)}: entre todos los fondos no llega a ${eur(X, 2)}.`);
-  // Comparación: sacarlo todo de un solo fondo
-  el("h3", {}, c, `Si lo sacaras todo de un solo fondo (${eur(X, 2)} por FIFO)`);
-  const t2c = el("div", { class: "tabla" }, c), t2 = el("table", {}, t2c), cab2 = el("tr", {}, el("thead", {}, t2));
-  ["Fondo", "Lotes"].concat(conPart ? ["Participaciones"] : [], ["Plusvalía", "%"]).forEach((h, k) => el("th", { class: k < 2 ? "izq" : "" }, cab2, h));
-  const tb2 = el("tbody", {}, t2);
+  const G1 = G;
+
+  // 2. Todo de un solo fondo
+  el("h3", {}, c, `2. Todo de un solo fondo (${eur(X, 2)} por FIFO)`);
+  const tb2 = cabecera("", ["Fondo", "Lotes"].concat(conPart ? ["Participaciones"] : [], ["Plusvalía", "%"]));
+  let G2 = null;
   fondos.map(r => ({ r, q: r.valor >= X ? cuenta(r, 0, X) : null })).sort((a, b) => (a.q ? a.q.g : Infinity) - (b.q ? b.q.g : Infinity)).forEach(({ r, q }) => {
-    const tr = el("tr", {}, tb2);
-    const c1 = el("td", { class: "izq" }, tr); el("i", { class: "chip", style: `background:${colorDest(r.id)}` }, c1); c1.append(r.nombre);
+    const tr = el("tr", {}, tb2); celdaFondo(tr, r);
     if (!q) { el("td", { class: "izq", colspan: conPart ? 4 : 3 }, tr, `No llega: tiene ${eur(r.valor, 2)}`); return; }
+    if (G2 === null) G2 = q.g;
     el("td", { class: "izq" }, tr, q.n + (q.parciales ? " (el último, parcial)" : ""));
     if (conPart) el("td", {}, tr, r.vl ? part(q.np, r.aprox) : "—");
     el("td", {}, tr, eur(q.g, 2)); el("td", {}, tr, pct(100 * q.g / q.v));
   });
+
+  // 3. Con traspasos antes y después
+  el("h3", {}, c, "3. Con traspasos antes y después del reembolso");
+  el("p", { class: "sub" }, c, "Se reembolsan los lotes de menor plusvalía de toda la cartera. Antes, traspasos para juntarlos en un fondo (lo que estorba se aparta a su fondo definitivo o a un fondo auxiliar vacío). Después, traspasos para que cada fondo recupere su % de capital y los lotes queden por bandas de plusvalía: el fondo de menor plusvalía media con la banda más baja, y así sucesivamente, de modo que el próximo reembolso necesite pocos traspasos.");
+  const f3 = el("div", { class: "vl" }, c);
+  const Ttot = fondos.reduce((s, r) => s + r.valor, 0), minDef = (() => { const x = Math.min(Ttot / 50, Math.min(...fondos.map(r => r.valor)) / 2), p = Math.pow(10, Math.floor(Math.log10(Math.max(x, 1)))); return Math.max(10, Math.round(x / p) * p); })();
+  const lt = el("label", {}, f3, "Tramos de al menos ");
+  const it = el("input", { type: "number", step: "100", min: "0", id: "reembolso-min", value: S.minV3 ?? minDef }, lt); lt.append(" €");
+  it.addEventListener("change", () => { S.minV3 = Math.max(0, parseFloat(it.value) || 0); cambio(); });
+  el("span", {}, f3, "(cada traspaso mueve un tramo consecutivo del FIFO; los tramos más pequeños se funden con sus vecinos: menos traspasos a cambio de una ordenación menos fina)");
+  const sim = simularConTraspasos(fondos, X, S.minV3 ?? minDef);
+  if (sim.error) { el("p", { class: "sub aviso" }, c, sim.error); return; }
+  const r3 = sim.reemb;
+  const resumen = el("p", { class: "sub" }, c);
+  el("b", {}, resumen, `Plusvalía aflorada ${eur(r3.g, 2)} (${pct(100 * r3.g / r3.v)})`);
+  resumen.append(` · ${sim.pasos1.length} traspaso${sim.pasos1.length === 1 ? "" : "s"} antes y ${sim.pasos2.length} después` + (sim.usaAux ? " · hace falta un fondo auxiliar vacío" : "") +
+    ` · frente a ${eur(G1, 2)} sin traspasos` + (G2 !== null ? ` y ${eur(G2, 2)} de un solo fondo` : "") + ".");
+  if (!r3.optimo) el("p", { class: "sub aviso" }, c, "No se ha conseguido que salgan exactamente los lotes de menor plusvalía; la cifra es la de los lotes que salen de verdad.");
+  if (!sim.completo) el("p", { class: "sub aviso" }, c, "La recolocación final no ha terminado del todo (demasiados traspasos); el resultado es el estado alcanzado.");
+  const ol = el("ol", { class: "pasos" }, c);
+  const paso = p => {
+    const li = el("li", {}, ol);
+    li.append(p.aparcar ? "Aparcar: " : p.ajuste ? "Ajuste del reparto: " : "Traspaso: ");
+    el("b", {}, li, eur(p.v, 2) + (p.np ? ` (${part(p.np, p.aprox)})` : ""));
+    li.append(` de ${p.de.nombre} → ${p.a.nombre} · ${p.n} lote${p.n > 1 ? "s" : ""} del ${fecha(p.fmin)} al ${fecha(p.fmax)} · plusvalía ${eur(p.g, 2)}`);
+  };
+  sim.pasos1.forEach(paso);
+  const lr = el("li", {}, ol); el("b", {}, lr, `Reembolso de ${eur(r3.v, 2)}` + (r3.np ? ` (${part(r3.np, r3.fondo.aprox)})` : "")); lr.append(` de ${r3.fondo.nombre} · ${r3.n} lotes · plusvalía ${eur(r3.g, 2)} (${pct(100 * r3.g / r3.v)})`);
+  sim.pasos2.forEach(paso);
+  el("h3", {}, c, "Cómo queda la cartera al final");
+  const tb3 = cabecera("", ["Fondo", "Banda", "Valor", "% cartera", "% objetivo", "Plusvalía media", "Lotes"]);
+  sim.est.slice().sort((a, b) => b.vFin - a.vFin).forEach(f => {
+    const tr = el("tr", {}, tb3); celdaFondo(tr, f);
+    el("td", { class: "izq" }, tr, f.banda === 0 ? "la más baja" : f.banda === sim.est.length - 1 ? "la más alta" : "intermedia " + f.banda);
+    el("td", {}, tr, eur(f.vFin, 2)); el("td", {}, tr, pct(100 * f.cuotaFin)); el("td", {}, tr, pct(100 * f.cuota)); el("td", {}, tr, pct(f.mediaFin)); el("td", {}, tr, String(f.lotes.length));
+  });
+  if (sim.aux.lotes.length) el("p", { class: "sub aviso" }, c, `Quedan ${eur(sim.aux.lotes.reduce((s, l) => s + l.v, 0), 2)} en el fondo auxiliar.`);
+  if (sim.umbrales.length) el("p", { class: "sub" }, c, "Umbrales entre bandas: " + sim.umbrales.map(u => pct(u)).join(" · "));
 }
 
 function render() {
