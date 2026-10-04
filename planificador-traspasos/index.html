@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Planificador de traspasos</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10); --hover: rgba(11,11,11,0.07);
+  --accent: #2a78d6; --queda: #b4b2aa; --aviso: #9a4a00; --aviso-fondo: #fdf3e7; --ok: #006300;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --hover: rgba(255,255,255,0.09);
+    --accent: #3987e5; --queda: #5d5c57; --aviso: #f0a35a; --aviso-fondo: #2b2017; --ok: #0ca30c;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --hover: rgba(255,255,255,0.09);
+  --accent: #3987e5; --queda: #5d5c57; --aviso: #f0a35a; --aviso-fondo: #2b2017; --ok: #0ca30c;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; padding: 20px 16px 56px; background: var(--page); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1180px; margin: 0 auto; }
+h1 { font-size: 22px; margin: 0 0 4px; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0; text-wrap: balance; }
+h3 { font-size: 14px; margin: 14px 0 6px; color: var(--ink2); font-weight: 600; }
+p { margin: 0; }
+.intro { color: var(--ink2); margin: 0 0 16px; max-width: 80ch; }
+button, .btn { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 12px; cursor: pointer; }
+button:hover, .btn:hover { background: var(--hover); }
+button:focus-visible, .btn:focus-within, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.menor { padding: 2px 10px; font-size: 13px; color: var(--ink2); }
+input[type=text], input[type=number], select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 8px; font-variant-numeric: tabular-nums; }
+input[type=number] { width: 11ch; }
+.carga { background: var(--surface); border: 1px dashed var(--axis); border-radius: 12px; padding: 14px 16px; margin: 0 0 16px;
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.carga.sobre { border-color: var(--accent); background: var(--hover); }
+.carga p { flex: 1 1 320px; color: var(--ink2); }
+.carga p b { color: var(--ink); }
+.carga .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.avisos { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--ink2); }
+.avisos li.mal { color: var(--aviso); }
+.ejemplo { background: var(--aviso-fondo); color: var(--aviso); border-radius: 8px; padding: 8px 12px; margin: 0 0 16px; }
+.controles { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; margin: 0 0 16px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg label { padding: 6px 12px; cursor: pointer; color: var(--ink2); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg input:checked + span { color: var(--ink); font-weight: 600; }
+.seg label:has(input:checked) { background: var(--hover); }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; color: var(--ink2); font-size: 13px; }
+.leyenda > span { display: inline-flex; align-items: center; gap: 6px; }
+.chip { display: inline-block; width: 11px; height: 11px; border-radius: 3px; flex: none; }
+.leyenda input[type=text] { width: 16ch; padding: 2px 6px; font-size: 13px; }
+.leyenda button { padding: 0 6px; line-height: 1.3; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 16px 12px; margin: 0 0 16px; }
+.card .cab { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; justify-content: space-between; }
+.card .sub { color: var(--ink2); font-size: 13px; margin: 2px 0 8px; }
+.vl { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 13px; color: var(--ink2); margin: 0 0 8px; }
+.vl label { display: inline-flex; align-items: center; gap: 6px; }
+.plot { position: relative; }
+svg { display: block; width: 100%; overflow: visible; }
+svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+svg .ano { fill: var(--ink2); }
+svg .eje { fill: var(--ink2); font-size: 11px; }
+svg .ngrupo { fill: var(--ink); font-size: 11px; font-weight: 600; }
+svg .banda { cursor: crosshair; touch-action: pan-y; }
+svg .banda.mover { cursor: col-resize; }
+svg .banda.subir { cursor: row-resize; }
+.sel { display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: baseline; margin: 8px 0 0; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--ink2); }
+.sel .dato b { color: var(--ink); font-size: 15px; font-weight: 600; }
+.sel button { margin-left: auto; }
+.sel button + button { margin-left: 0; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.14);
+  white-space: nowrap; display: none; z-index: 2; }
+.tip b { display: block; font-size: 14px; color: var(--ink); }
+.tip span { color: var(--ink2); display: block; }
+.ayuda { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+.tabla { overflow-x: auto; margin-top: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--grid); vertical-align: middle; white-space: nowrap; }
+th { color: var(--ink2); font-weight: 600; }
+th:first-child, td:first-child, th.izq, td.izq { text-align: left; }
+tr.total td { font-weight: 600; border-bottom: none; }
+td .chip { vertical-align: -1px; margin-right: 6px; }
+.lotes { max-height: 320px; overflow: auto; }
+.lotes th { position: sticky; top: 0; background: var(--surface); }
+.lotes table { font-size: 12px; }
+details { margin-top: 6px; }
+summary { cursor: pointer; color: var(--ink2); font-size: 13px; padding: 4px 0; }
+.pasos { margin: 6px 0 0; padding-left: 22px; }
+.pasos li { margin: 2px 0; }
+.pasos b { font-variant-numeric: tabular-nums; }
+.aviso { color: var(--aviso); }
+.plan pre { white-space: pre-wrap; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 8px 0 0; color: var(--ink2); }
+.resultado .card .sub b { color: var(--ink); }
+.vacio { color: var(--ink2); }
+@media (prefers-reduced-motion: no-preference) { .carga { transition: background .15s, border-color .15s; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Planificador de traspasos</h1>
+<p class="intro">Carga los CSV de MyInvestor, corta cada fondo en grupos de lotes y elige a qué fondo va cada grupo. La aplicación calcula las participaciones de cada traspaso y cómo quedan los fondos después. Todo se hace en tu navegador: los archivos no salen de tu ordenador.</p>
+
+<section class="carga" id="zona">
+  <p><b>Arrastra aquí los CSV de MyInvestor</b> o una carpeta con ellos: «Plusvalías y minusvalías fondo ISIN.csv» (lotes vivos) y, para deducir el valor liquidativo y las participaciones, «Órdenes … .csv».</p>
+  <div class="btns">
+    <label class="btn">Elegir archivos<input type="file" id="archivos" multiple accept=".csv,text/csv" hidden></label>
+    <label class="btn">Elegir carpeta<input type="file" id="carpeta" webkitdirectory multiple hidden></label>
+    <button type="button" id="vaciar" class="menor">Vaciar todo</button>
+  </div>
+  <ul class="avisos" id="avisos"></ul>
+</section>
+<div class="ejemplo" id="ejemplo" hidden>Estás viendo <b>datos de ejemplo</b> inventados. Carga tus CSV para trabajar con tus lotes.</div>
+
+<div class="controles">
+  <span class="sub">Cada barra es un lote: la anchura son sus participaciones y la altura su plusvalía en %. Colores por destino:</span>
+  <div class="leyenda" id="leyenda"></div>
+</div>
+
+<div id="fondos"></div>
+
+<section class="card plan" id="plan"></section>
+<section class="resultado" id="resultado"></section>
+<section class="card" id="reembolso"></section>
+</main>
+
+<script>
+"use strict";
+const NOMBRES = {
+  "IE000ZYRH0Q7": "iShares Developed World Index (IE) Acc EUR clase S",
+  "IE000QAZP7L2": "iShares Emerging Markets Index Fund (IE) Acc EUR clase S",
+  "IE00B42W4L06": "Vanguard Global Small-Cap Index Fund EUR Acc",
+  "IE00BKV0W243": "Vanguard ESG Emerging Markets All Cap Equity Index Fund EUR Acc",
+  "ES0165242001": "MyInvestor S&P500 Equiponderado",
+  "FR0000447823": "AXA Trésor Court Terme C",
+};
+const CLAVE = "planificador-traspasos-v1";
+const NS = "http://www.w3.org/2000/svg";
+const QUEDA = "queda";
+const fmt = (x, d) => (Math.abs(x) < 0.5 * Math.pow(10, -d) ? 0 : x).toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: "always" });
+const eur = (x, d = 0) => fmt(x, d) + " €";
+const pct = x => fmt(x, 1) + " %";
+const part = (x, aprox, d = 4) => (aprox ? "≈ " : "") + x.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: d, useGrouping: "always" }) + " part.";
+const fecha = s => s.split("-").reverse().join("/");
+let S = null;
+
+function el(tag, attrs, parent, text) {
+  const e = tag === "svg" || parent instanceof SVGElement ? document.createElementNS(NS, tag) : document.createElement(tag);
+  for (const k in attrs || {}) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+// ---------- Estado ----------
+function estadoVacio() { return { fondos: {}, ordenes: {}, nuevos: [], colores: {}, ejemplo: false, reembolso: null }; }
+
+function guardar() {
+  const limpio = (k, v) => ["g", "p", "x0", "ga", "n", "rect", "sel", "caja", "pintarGrupos", "pintarUmbral", "pintarSel", "vl", "valor", "lat", "coste", "aprox"].includes(k) ? undefined : v;
+  try { localStorage.setItem(CLAVE, JSON.stringify(S, limpio)); } catch (_) {}
+}
+function cargarEstado() {
+  try {
+    const s = JSON.parse(localStorage.getItem(CLAVE));
+    if (s && s.fondos) return Object.assign(estadoVacio(), s);
+  } catch (_) {}
+  return null;
+}
+
+function estadoEjemplo() {
+  // Dos fondos inventados con aportaciones semanales; el precio sigue una senda suave con un bache
+  const s = estadoVacio(); s.ejemplo = true;
+  let semilla = 7;
+  const azar = () => { semilla = (semilla * 48271) % 2147483647; return semilla / 2147483647; };
+  const fondo = (isin, nombre, semanas, importe, vlHoy, deriva) => {
+    const senda = []; let vl = 1;
+    for (let i = semanas; i > 0; i--) { vl *= Math.exp(deriva / 52 + (azar() - 0.5) * 0.05 + (i > 60 && i < 75 ? -0.012 : 0) + (i < 15 ? -0.004 : 0)); senda.push(vl); }
+    const escala = vlHoy / (vl * Math.exp(deriva / 52));   // el precio de hoy es el último de la senda, un poco por encima
+    const lotes = [], hoy = new Date(Date.UTC(2026, 8, 27));
+    senda.forEach((p, k) => {
+      const d = new Date(hoy); d.setUTCDate(d.getUTCDate() - 7 * (semanas - k));
+      lotes.push({ f: d.toISOString().slice(0, 10), c: importe, v: Math.round(importe * vlHoy / (p * escala) * 100) / 100 });
+    });
+    s.fondos[isin] = { isin, nombre, lotes, vlManual: null, partManual: null, vlOrd: vlHoy, cortes: [], destinos: [QUEDA], umbral: null, archivo: "ejemplo" };
+  };
+  fondo("XX0000000001", "Fondo de ejemplo A (renta variable global)", 156, 250, 18.4, 0.11);
+  fondo("XX0000000002", "Fondo de ejemplo B (emergentes)", 78, 100, 9.7, 0.06);
+  return s;
+}
+
+// ---------- Lectura de CSV ----------
+function num(s) {
+  s = (s || "").replace(/[^\d.,-]/g, "");
+  if (!s) return 0;
+  if (s.includes(".") && s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+  else if (s.includes(",")) s = s.replace(",", ".");
+  return parseFloat(s) || 0;
+}
+function filas(texto) {
+  return texto.replace(/^﻿/, "").split(/\r?\n/).filter(l => l.trim()).map(l => l.split(";").map(c => c.trim()));
+}
+function iso(ddmmaaaa) { const [d, m, a] = ddmmaaaa.split("/"); return `${a}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`; }
+function sumarDias(isoFecha, n) { const d = new Date(isoFecha + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+
+function leerLotes(texto) {
+  const f = filas(texto), cab = f[0];
+  const iInv = cab.indexOf("Inversión"), iVal = cab.indexOf("Valor de mercado"), iFec = cab.indexOf("Fecha fiscal");
+  const lotes = [];
+  f.slice(1).forEach((r, i) => {
+    const c = num(r[iInv]), v = num(r[iVal]);
+    if (c === 0 && v === 0) return;                 // lote ya cerrado en el año: solo trae resultado fiscal
+    lotes.push({ f: iso(r[iFec]), i, c: Math.round(c * 100) / 100, v: Math.round(v * 100) / 100 });
+  });
+  lotes.sort((a, b) => a.f < b.f ? -1 : a.f > b.f ? 1 : a.i - b.i);
+  return lotes.map(l => ({ f: l.f, c: l.c, v: l.v }));
+}
+
+function leerOrdenes(texto) {
+  const f = filas(texto), cab = f[0];
+  const iF = cab.indexOf("Fecha de la orden"), iI = cab.indexOf("ISIN"), iImp = cab.indexOf("Importe estimado"),
+    iP = cab.indexOf("Nº de participaciones"), iE = cab.indexOf("Estado");
+  const out = [];
+  f.slice(1).forEach(r => {
+    if (r[iE] !== "Finalizada" || !r[iP]) return;
+    out.push({ isin: r[iI], f: iso(r[iF]), importe: num(r[iImp]), part: num(r[iP]) });
+  });
+  return out;
+}
+
+function vlDesdeOrdenes(lotes, ordenes) {
+  // Cada compra finalizada (importe y participaciones) se cruza con su lote: mismo coste y fecha de valor hasta 7 días después
+  if (!ordenes || !ordenes.length) return null;
+  const porFecha = {};
+  lotes.forEach(l => (porFecha[l.f] = porFecha[l.f] || []).push(l));
+  const coc = [];
+  ordenes.forEach(o => {
+    if (!o.part) return;
+    for (let d = 0; d <= 7; d++) {
+      const cand = (porFecha[sumarDias(o.f, d)] || []).filter(l => Math.abs(l.c - o.importe) < 0.01 * o.importe);
+      if (cand.length) { coc.push(cand[0].v / o.part); break; }
+    }
+  });
+  if (!coc.length) return null;
+  coc.sort((a, b) => a - b);
+  const n = coc.length;
+  return n % 2 ? coc[(n - 1) / 2] : (coc[n / 2 - 1] + coc[n / 2]) / 2;
+}
+
+const isinDeNombre = nombre => (nombre.normalize("NFC").match(/\b([A-Z]{2}[A-Z0-9]{9}\d)\b/) || [])[1];
+
+async function procesarArchivos(lista) {
+  const avisos = [];
+  if (S.ejemplo) S = estadoVacio();
+  const ordenesNuevas = [];
+  for (const a of lista) {
+    const nombre = a.name.normalize("NFC");
+    if (!/\.csv$/i.test(nombre)) continue;
+    let texto;
+    try { texto = await a.text(); } catch (_) { avisos.push({ mal: true, t: `${nombre}: no se ha podido leer` }); continue; }
+    const cab = texto.replace(/^﻿/, "").split(/\r?\n/)[0] || "";
+    if (cab.startsWith("Fecha fiscal")) {
+      const isin = isinDeNombre(nombre);
+      if (!isin) { avisos.push({ mal: true, t: `${nombre}: el nombre del archivo no lleva el ISIN y no sé de qué fondo es` }); continue; }
+      const lotes = leerLotes(texto);
+      const previo = S.fondos[isin];
+      const conserva = previo && previo.lotes.length === lotes.length;   // los cortes solo sobreviven si el número de lotes no cambia
+      S.fondos[isin] = {
+        isin, nombre: previo ? previo.nombre : NOMBRES[isin] || isin, lotes,
+        vlManual: previo ? previo.vlManual : null, partManual: previo ? previo.partManual : null, vlOrd: null,
+        cortes: conserva ? previo.cortes : [], destinos: conserva ? previo.destinos : [QUEDA], archivo: nombre,
+        umbral: previo ? previo.umbral : null,
+      };
+      avisos.push({ t: `${isin}: ${lotes.length} lotes vivos${previo ? " (sustituye al anterior)" : ""}` });
+    } else if (cab.startsWith("Fecha de la orden")) {
+      const o = leerOrdenes(texto);
+      ordenesNuevas.push(...o);
+      avisos.push({ t: `${nombre}: ${o.length} compras finalizadas` });
+    } else {
+      avisos.push({ mal: true, t: `${nombre}: no es un CSV de MyInvestor que reconozca` });
+    }
+  }
+  ordenesNuevas.forEach(o => {
+    const lista = S.ordenes[o.isin] = S.ordenes[o.isin] || [];
+    if (!lista.some(x => x.f === o.f && x.importe === o.importe && x.part === o.part)) lista.push(o);
+  });
+  Object.values(S.fondos).forEach(f => {
+    f.vlOrd = vlDesdeOrdenes(f.lotes, S.ordenes[f.isin]);
+    if (f.vlOrd) f.vlOrd = Math.round(f.vlOrd * 1e4) / 1e4;
+    if (f.umbral) { preparar(f); aplicarUmbral(f); }
+  });
+  return avisos;
+}
+
+async function entradasDeDrop(dt) {
+  // Arrastrar una carpeta: se recorre con la API de entradas de los navegadores WebKit/Blink
+  const items = [...(dt.items || [])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  if (!items.length) return [...dt.files];
+  const out = [];
+  const leerEntrada = e => new Promise(res => {
+    if (e.isFile) e.file(f => { out.push(f); res(); }, res);
+    else if (e.isDirectory) {
+      const lector = e.createReader();
+      const lee = () => lector.readEntries(async ents => { if (!ents.length) return res(); for (const x of ents) await leerEntrada(x); lee(); }, res);
+      lee();
+    } else res();
+  });
+  for (const e of items) await leerEntrada(e);
+  return out;
+}
+
+// ---------- Cálculos ----------
+function preparar(f) {
+  let acc = 0, gacc = 0;
+  f.lotes.forEach(l => { l.g = l.v - l.c; l.p = l.v ? 100 * l.g / l.v : 0; l.x0 = acc; acc += l.v; gacc += l.g; l.ga = gacc; });
+  f.valor = acc; f.lat = gacc; f.coste = acc - gacc;
+  f.vl = f.partManual ? f.valor / f.partManual : f.vlManual || f.vlOrd || null;
+  f.aprox = !f.partManual && !f.vlManual && !!f.vlOrd;
+  f.part = f.vl ? f.valor / f.vl : null;
+  f.lotes.forEach(l => { l.n = f.vl ? l.v / f.vl : null; });
+}
+const posCorte = (f, c) => { const l = f.lotes[c.i]; return l.x0 + c.fr * l.v; };
+function corteDesdePos(f, v) {
+  const i = indice(f, v), l = f.lotes[i];
+  return { i, fr: Math.min(1, Math.max(0, (v - l.x0) / l.v)) };
+}
+function indice(f, v) {                    // lote que contiene el valor acumulado v
+  let lo = 0, hi = f.lotes.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (f.lotes[mid].x0 <= v) lo = mid; else hi = mid - 1; }
+  return lo;
+}
+function segmentos(f) {
+  const out = []; let a = 0;
+  f.cortes.forEach((c, j) => { const p = posCorte(f, c); out.push({ a, b: p, dest: f.destinos[j], j }); a = p; });
+  out.push({ a, b: f.valor, dest: f.destinos[f.cortes.length], j: f.cortes.length });
+  return out;
+}
+function cuenta(f, a, b) {
+  // Lo que hay entre los acumulados a y b; los lotes cortados cuentan a prorrata, como en un traspaso parcial
+  const r = { v: 0, c: 0, g: 0, n: 0, np: 0, parciales: 0, primero: null, ultimo: null, lotes: [] };
+  for (let i = indice(f, a); i < f.lotes.length; i++) {
+    const l = f.lotes[i], parte = Math.min(b, l.x0 + l.v) - Math.max(a, l.x0);
+    if (l.x0 >= b - 1e-9) break;
+    if (parte <= 1e-6) continue;
+    const fr = Math.min(1, parte / l.v);
+    r.v += parte; r.c += l.c * fr; r.g += l.g * fr; r.n++; if (f.vl) r.np += l.n * fr; if (fr < 0.9999) r.parciales++;
+    r.primero = r.primero || l; r.ultimo = l;
+    r.lotes.push({ f: l.f, c: l.c * fr, v: l.v * fr, fr });
+  }
+  return r;
+}
+function grupos(f) {
+  return segmentos(f).map((s, k) => Object.assign(s, cuenta(f, s.a, s.b), { k: k + 1 }));
+}
+
+// Umbrales de plusvalía: k−1 umbrales reparten los lotes en k bandas (banda 0 por debajo del primero, banda k−1 por encima del último);
+// los tramos consecutivos de la misma banda forman grupos. Un tramo que no llega al importe mínimo se funde con sus vecinos y el
+// grupo resultante se clasifica por su plusvalía media: un lote grande puede ir solo, y los lotes pequeños no merecen un traspaso aparte.
+const bandaDe = (f, p) => f.umbral.ts.filter(t => p >= t).length;
+function tramosPorUmbral(f) {
+  const { minV } = f.umbral;
+  const runs = [];
+  f.lotes.forEach((l, i) => {
+    const b = bandaDe(f, l.p), u = runs[runs.length - 1];
+    if (u && u.b === b) u.i1 = i; else runs.push({ b, i0: i, i1: i });
+  });
+  const n = r => { let v = 0; for (let i = r.i0; i <= r.i1; i++) v += f.lotes[i].v; return v; };
+  const media = r => { let v = 0, g = 0; for (let i = r.i0; i <= r.i1; i++) { v += f.lotes[i].v; g += f.lotes[i].g; } return v ? 100 * g / v : 0; };
+  while (runs.length > 1) {
+    let k = -1;
+    runs.forEach((r, j) => { if (n(r) < minV && (k < 0 || n(r) < n(runs[k]))) k = j; });
+    if (k < 0) break;
+    const a = Math.max(0, k - 1), b = Math.min(runs.length - 1, k + 1);
+    const unido = { i0: runs[a].i0, i1: runs[b].i1 };
+    unido.b = bandaDe(f, media(unido));
+    runs.splice(a, b - a + 1, unido);
+    for (let j = 0; j + 1 < runs.length;) { if (runs[j].b === runs[j + 1].b) { runs[j].i1 = runs[j + 1].i1; runs.splice(j + 1, 1); } else j++; }
+  }
+  return runs;
+}
+function minPorDefecto(f) {            // un 5 % del valor del fondo, redondeado a una cifra
+  const x = f.valor / 20, p = Math.pow(10, Math.floor(Math.log10(Math.max(x, 1))));
+  return Math.max(10, Math.round(x / p) * p);
+}
+// Umbrales sugeridos para k bandas: partición óptima de los porcentajes (cortes naturales de Fisher-Jenks), ponderada por el valor de cada lote
+function sugerirUmbrales(f, k) {
+  const xs = f.lotes.map(l => ({ p: l.p, w: l.v })).sort((a, b) => a.p - b.p), n = xs.length;
+  if (k < 2 || n < k) return [];
+  const W = [0], WP = [0], WPP = [0];
+  xs.forEach((x, i) => { W[i + 1] = W[i] + x.w; WP[i + 1] = WP[i] + x.w * x.p; WPP[i + 1] = WPP[i] + x.w * x.p * x.p; });
+  const sse = (i, j) => { const w = W[j] - W[i]; if (w <= 0) return 0; const m = (WP[j] - WP[i]) / w; return WPP[j] - WPP[i] - w * m * m; };
+  let prev = Array(n + 1).fill(Infinity); prev[0] = 0;
+  const args = [];
+  for (let g = 1; g <= k; g++) {
+    const cur = Array(n + 1).fill(Infinity), arg = Array(n + 1).fill(0);
+    for (let j = g; j <= n; j++) for (let i = g - 1; i < j; i++) { const v = prev[i] + sse(i, j); if (v < cur[j]) { cur[j] = v; arg[j] = i; } }
+    args.push(arg); prev = cur;
+  }
+  const cortes = []; let j = n;
+  for (let g = k; g >= 2; g--) { j = args[g - 1][j]; cortes.unshift(j); }
+  const ts = cortes.map(c => Math.round((xs[c - 1].p + xs[c].p) / 2 * 10) / 10);
+  for (let i = 1; i < ts.length; i++) if (ts[i] <= ts[i - 1]) ts[i] = ts[i - 1] + 0.1;   // estrictamente crecientes
+  return ts;
+}
+function aplicarUmbral(f) {
+  if (!f.umbral) return;
+  const u = f.umbral;
+  if (u.minV == null) u.minV = minPorDefecto(f);                          // estados guardados con el mínimo antiguo en lotes
+  if (!u.ts) { u.ts = [u.t]; u.dests = [u.abajo, u.arriba]; delete u.t; delete u.abajo; delete u.arriba; }   // estados con un solo umbral
+  u.ts.sort((a, b) => a - b);
+  while (u.dests.length < u.ts.length + 1) u.dests.push(QUEDA);
+  u.dests.length = u.ts.length + 1;
+  const runs = tramosPorUmbral(f);
+  f.cortes = runs.slice(1).map(r => ({ i: r.i0, fr: 0 }));
+  f.destinos = runs.map(r => u.dests[r.b]);
+}
+function resumenUmbral(f) {             // cifras de cada banda, de la más alta a la más baja
+  const r = f.umbral.dests.map(() => ({ n: 0, np: 0, v: 0, g: 0 }));
+  f.lotes.forEach(l => { const x = r[bandaDe(f, l.p)]; x.n++; x.v += l.v; x.g += l.g; if (f.vl) x.np += l.n; });
+  return r;
+}
+function nombreBanda(f, b) {
+  const ts = f.umbral.ts, k = ts.length;
+  return b === 0 ? `por debajo de ${pct(ts[0])}` : b === k ? `por encima de ${pct(ts[k - 1])}` : `entre ${pct(ts[b - 1])} y ${pct(ts[b])}`;
+}
+
+// Destinos: fondos cargados, fondos nuevos o «se queda»
+function destinos() {
+  return [...Object.values(S.fondos).map(f => ({ id: f.isin, nombre: f.nombre })), ...S.nuevos.map(n => ({ id: n.id, nombre: n.nombre }))];
+}
+function nombreDest(id) {
+  if (id === QUEDA) return "Se queda";
+  const d = destinos().find(d => d.id === id);
+  return d ? d.nombre : "(fondo eliminado)";
+}
+function colorDest(id) {
+  if (id === QUEDA) return "var(--queda)";
+  if (!(id in S.colores)) S.colores[id] = Object.keys(S.colores).length;   // el color sigue al fondo, nunca cambia
+  return `var(--s${(S.colores[id] % 8) + 1})`;
+}
+function usado(id) { return Object.values(S.fondos).some(f => f.destinos.includes(id)); }
+
+function traspasos(f) {
+  // Traspasos en orden FIFO: el primero se lleva los lotes más antiguos. Un grupo «se queda» antes de otro que sale no es posible.
+  const out = [], gs = grupos(f); let quedaAntes = false, n = 0;
+  gs.forEach(g => {
+    if (g.dest === QUEDA) { quedaAntes = true; return; }
+    n++;
+    out.push({ n, g, imposible: quedaAntes });
+  });
+  return out;
+}
+
+function resultado() {
+  // Cómo queda cada fondo tras el plan: sus lotes que se quedan más los que recibe (conservan fecha y coste)
+  const res = {};
+  destinos().forEach(d => { res[d.id] = { id: d.id, nombre: d.nombre, lotes: [], cambia: false, isin: S.fondos[d.id] ? d.id : "" }; });
+  Object.values(S.fondos).forEach(f => {
+    grupos(f).forEach(g => {
+      const dest = g.dest === QUEDA ? f.isin : g.dest;
+      if (!res[dest]) return;
+      g.lotes.forEach(l => res[dest].lotes.push({ f: l.f, c: Math.round(l.c * 100) / 100, v: Math.round(l.v * 100) / 100, o: g.dest === QUEDA ? null : f.nombre, de: g.dest === QUEDA ? null : f.isin }));
+      if (g.dest !== QUEDA) { res[dest].cambia = true; res[f.isin].cambia = true; }
+    });
+  });
+  const lista = Object.values(res).filter(r => r.lotes.length);
+  lista.forEach(r => {
+    r.lotes.sort((a, b) => a.f < b.f ? -1 : a.f > b.f ? 1 : 0);
+    const f = S.fondos[r.id];
+    r.vl = f ? f.vl : null; r.aprox = f ? f.aprox : false;
+    r.cortes = []; r.destinos = [QUEDA];
+    preparar(Object.assign(r, { vlManual: f ? f.vlManual : null, partManual: null, vlOrd: f ? (f.partManual ? f.valor / f.partManual : f.vlOrd) : null }));
+    if (f && f.partManual) r.aprox = false;
+  });
+  return lista.sort((a, b) => b.valor - a.valor);
+}
+
+// ---------- Gráfica ----------
+function pasos(min, max, n) {           // marcas redondas del eje
+  const bruto = (max - min) / n, p = Math.pow(10, Math.floor(Math.log10(bruto)));
+  const paso = [1, 2, 2.5, 5, 10].map(m => m * p).find(s => s >= bruto);
+  const out = [];
+  for (let v = Math.ceil(min / paso) * paso; v <= max + 1e-9; v += paso) out.push(Math.round(v * 1e6) / 1e6);
+  return out;
+}
+let PCT_MAX = 1, PCT_MIN = 0;
+
+function dibujar(f, caja, editable) {
+  const plot = caja.querySelector(".plot"), tip = plot.querySelector(".tip");
+  plot.querySelector("svg")?.remove();
+  const W = Math.max(320, plot.clientWidth), H = 300, m = { l: 56, r: 12, t: 24, b: 50 };
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img",
+    "aria-label": `${f.nombre}: ${f.lotes.length} lotes, de más antiguo a más nuevo` });
+  plot.insertBefore(svg, tip);
+  const val = l => l.p;                   // altura: plusvalía en % del valor; escala vertical común a todos los fondos
+  let yMax = PCT_MAX, yMin = PCT_MIN;
+  if (yMax - yMin < 1e-9) yMax = 1;
+  const ty = pasos(yMin, yMax, 5);
+  yMax = Math.max(yMax, ty[ty.length - 1]); yMin = Math.min(yMin, ty[0]);
+  const ancho = W - m.l - m.r;
+  const X = v => m.l + ancho * v / f.valor;
+  const Y = v => m.t + (H - m.t - m.b) * (yMax - v) / (yMax - yMin);
+  const Yinv = py => yMax - (py - m.t) * (yMax - yMin) / (H - m.t - m.b);
+  const yBase = H - m.b;
+
+  ty.forEach(v => {
+    el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: "var(--grid)", "stroke-width": 1 }, svg);
+    el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end" }, svg, pct(v));
+  });
+  // Marcas de año: dónde empieza cada año de compra (se rotula si el tramo es lo bastante ancho)
+  const anos = [];
+  f.lotes.forEach(l => {
+    const a = l.f.slice(0, 4), u = anos[anos.length - 1];
+    if (u && u.a === a) u.x1 = l.x0 + l.v; else anos.push({ a, x0: l.x0, x1: l.x0 + l.v });
+  });
+  anos.forEach(t => {
+    const x = X(t.x0);
+    el("line", { x1: x, x2: x, y1: m.t - 4, y2: yBase, stroke: "var(--axis)", "stroke-width": 1 }, svg);
+    if (X(t.x1) - x >= 30) el("text", { x: x + 3, y: m.t - 8, class: "ano" }, svg, t.a);
+  });
+  // Barras: una por lote; el color es el destino del grupo al que pertenece
+  const gBarras = el("g", {}, svg);
+  f.lotes.forEach(l => {
+    const x = X(l.x0), w = X(l.x0 + l.v) - x, v = val(l), hueco = w >= 4 ? 1 : 0;
+    const y0 = Y(0), y1 = Y(v), h = Math.max(Math.abs(y1 - y0), 0.75);
+    l.rect = el("rect", { x: x + hueco / 2, y: v >= 0 ? y0 - h : y0, width: Math.max(w - hueco, 0.4), height: h,
+      rx: w >= 10 ? 2 : 0, fill: "var(--queda)" }, gBarras);
+    if (l.o) l.rect.setAttribute("fill", colorDest(f.id));
+  });
+  el("line", { x1: m.l, x2: W - m.r, y1: Y(0), y2: Y(0), stroke: "var(--axis)", "stroke-width": 1 }, svg);
+  // Eje x: participaciones acumuladas si se conoce el VL; si no, valor acumulado (proporcional)
+  const enPart = !!f.vl;
+  pasos(0, enPart ? f.part : f.valor, W < 600 ? 4 : 8).forEach(v => {
+    const x = enPart ? X(v * f.vl) : X(v);
+    el("line", { x1: x, x2: x, y1: yBase, y2: yBase + 3, stroke: "var(--axis)" }, svg);
+    el("text", { x, y: yBase + 14, "text-anchor": v === 0 ? "start" : "middle" }, svg, enPart ? fmt(v, 0) : eur(v));
+  });
+  el("text", { x: m.l, y: H - 4, class: "eje" }, svg,
+    (enPart ? "Participaciones acumuladas" : "Valor acumulado") + ", del lote más antiguo al más nuevo (orden en que salen por FIFO) →");
+
+  // Franja de grupos bajo las barras y líneas de corte
+  const gGrupos = el("g", {}, svg), gCortes = el("g", {}, svg);
+  function pintarGrupos() {
+    gGrupos.replaceChildren(); gCortes.replaceChildren();
+    if (!editable) return;
+    segmentos(f).forEach((s, k) => {
+      const x0 = X(s.a), x1 = X(s.b);
+      el("rect", { x: x0, y: yBase + 20, width: Math.max(x1 - x0, 1), height: 6, fill: colorDest(s.dest) }, gGrupos);
+      if (x1 - x0 >= 18) el("text", { x: (x0 + x1) / 2, y: yBase + 36, "text-anchor": "middle", class: "ngrupo" }, gGrupos, k + 1);
+      f.lotes.slice(indice(f, s.a), indice(f, Math.max(s.b - 1e-6, s.a)) + 1).forEach(l => l.rect.setAttribute("fill", colorDest(s.dest)));
+    });
+    f.cortes.forEach(c => {
+      const x = X(posCorte(f, c));
+      el("line", { x1: x, x2: x, y1: m.t - 10, y2: yBase + 26, stroke: "var(--ink)", "stroke-width": 1.5 }, gCortes);
+      el("path", { d: `M${x - 5},${m.t - 14} h10 l-5,7 z`, fill: "var(--ink)" }, gCortes);
+    });
+  }
+  f.pintarGrupos = pintarGrupos; pintarGrupos();
+  // Línea de umbral: arrastrable arriba y abajo
+  const gUmbral = el("g", {}, svg);
+  function pintarUmbral() {
+    gUmbral.replaceChildren();
+    if (!editable || !f.umbral) return;
+    f.umbral.ts.forEach((t, j) => {
+      const y = Y(Math.min(Math.max(t, yMin), yMax));
+      el("line", { x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: "var(--ink)", "stroke-width": 1.5, "stroke-dasharray": "6 4" }, gUmbral);
+      el("path", { d: `M${W - m.r + 2},${y} l8,-6 v12 z`, fill: "var(--ink)" }, gUmbral);
+      el("text", { x: W - m.r - 4, y: y - 5, "text-anchor": "end", class: "ngrupo" }, gUmbral, (f.umbral.ts.length > 1 ? `umbral ${j + 1}: ` : "umbral ") + pct(t));
+    });
+  }
+  f.pintarUmbral = pintarUmbral; pintarUmbral();
+
+  // Zona activa: hover con tooltip, clic para cortar, arrastre para mover un corte
+  const banda = el("rect", { x: m.l, y: m.t - 14, width: ancho, height: H - m.t + 14 - m.b + 28, fill: "transparent", class: "banda" }, svg);
+  const marca = el("rect", { y: m.t, height: yBase - m.t, fill: "var(--hover)", visibility: "hidden", "pointer-events": "none" }, svg);
+  function mostrar(i, px, py) {
+    const l = f.lotes[i], x = X(l.x0), w = Math.max(X(l.x0 + l.v) - x, 2);
+    marca.setAttribute("x", x - (w === 2 ? 1 : 0)); marca.setAttribute("width", w); marca.setAttribute("visibility", "visible");
+    tip.replaceChildren();
+    el("b", {}, tip, `${eur(l.g, 2)} · ${pct(l.p)}`);
+    el("span", {}, tip, `Lote del ${fecha(l.f)} (n.º ${i + 1} de ${f.lotes.length})`);
+    if (l.o) el("span", {}, tip, `Viene de ${l.o}`);
+    el("span", {}, tip, `Valor ${eur(l.v, 2)} · coste ${eur(l.c, 2)}` + (f.vl ? ` · ${part(l.n, f.aprox)}` : ""));
+    if (editable) { const s = segmentos(f).find(s => l.x0 < s.b - 1e-6); if (s) el("span", {}, tip, `Grupo ${s.j + 1} → ${nombreDest(s.dest)}`); }
+    el("span", {}, tip, `Acumulado hasta este lote (incluido): valor ${eur(l.x0 + l.v, 2)} · plusvalía ${eur(l.ga, 2)} (${pct(100 * l.ga / (l.x0 + l.v))})`);
+    tip.style.display = "block";
+    const tw = tip.offsetWidth, s = plot.clientWidth / W;
+    tip.style.left = Math.min(Math.max(px * s + 14, 0), plot.clientWidth - tw) + "px";
+    tip.style.top = Math.max(py * s - 70, 0) + "px";
+  }
+  function ocultar() { tip.style.display = "none"; marca.setAttribute("visibility", "hidden"); }
+  const lugar = e => {
+    const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width, py = (e.clientY - r.top) * W / r.width;
+    const v = Math.min(Math.max((px - m.l) / ancho * f.valor, 0), f.valor);
+    return { px, py, v, i: indice(f, v), libre: e.altKey };
+  };
+  const ajustar = q => {                   // al límite de lote más cercano; con Alt (⌥) se corta por donde esté el cursor
+    if (q.libre) return q.v;
+    const l = f.lotes[q.i];
+    return q.v - l.x0 <= l.x0 + l.v - q.v ? l.x0 : l.x0 + l.v;
+  };
+  const corteCerca = q => {                // índice del corte a menos de 6 px del cursor
+    const tol = 6 * f.valor / ancho;
+    let mejor = -1, dist = tol;
+    f.cortes.forEach((c, j) => { const d = Math.abs(posCorte(f, c) - q.v); if (d <= dist) { dist = d; mejor = j; } });
+    return mejor;
+  };
+  const umbralCerca = q => {               // índice del umbral a menos de 6 px del cursor, o −1
+    if (!editable || !f.umbral) return -1;
+    let mejor = -1, dist = 6;
+    f.umbral.ts.forEach((t, j) => { const d = Math.abs(q.py - Y(t)); if (d <= dist) { dist = d; mejor = j; } });
+    return mejor;
+  };
+  // Selección libre de un tramo (arrastrando): muestra sus cifras sin crear cortes
+  const zona = el("rect", { y: m.t, height: yBase - m.t, fill: "var(--ink)", "fill-opacity": 0.10, stroke: "var(--ink2)",
+    "stroke-width": 1, visibility: "hidden", "pointer-events": "none" }, svg);
+  function pintarSel() {
+    if (!f.sel) { zona.setAttribute("visibility", "hidden"); return; }
+    zona.setAttribute("x", X(f.sel[0])); zona.setAttribute("width", Math.max(X(f.sel[1]) - X(f.sel[0]), 1));
+    zona.setAttribute("visibility", "visible");
+  }
+  f.pintarSel = pintarSel; pintarSel();
+  let ancla = null, movido = false, arrastra = -1, arrastraUmbral = -1;
+  banda.addEventListener("pointerdown", e => {
+    if (e.button || !editable) return;
+    const q = lugar(e); movido = false; arrastraUmbral = umbralCerca(q); arrastra = arrastraUmbral >= 0 ? -1 : corteCerca(q);
+    ancla = { px: q.px, py: q.py, v: arrastra < 0 && arrastraUmbral < 0 ? ajustar(q) : null };
+    try { banda.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  banda.addEventListener("pointermove", e => {
+    const q = lugar(e);
+    if (ancla) {
+      if (Math.abs(q.px - ancla.px) > 3 || Math.abs(q.py - ancla.py) > 3) movido = true;
+      if (!movido) return;
+      ocultar();
+      if (arrastraUmbral >= 0) {
+        const ts = f.umbral.ts, j = arrastraUmbral;
+        const lo = j > 0 ? ts[j - 1] + 0.1 : yMin, hi = j < ts.length - 1 ? ts[j + 1] - 0.1 : yMax;
+        ts[j] = Math.round(Math.min(Math.max(Yinv(q.py), lo), hi) * 10) / 10;
+        aplicarUmbral(f); pintarUmbral(); pintarGrupos(); tablaGrupos(f, caja);
+        const i = caja.querySelector(`#umbral-${f.isin}-${j}`); if (i) i.value = ts[j];
+        caja.querySelectorAll(".bandas label > span").forEach((sp, b) => { sp.textContent = nombreBanda(f, f.umbral.dests.length - 1 - b) + " "; });
+      } else if (arrastra >= 0) {
+        const minimo = f.cortes[arrastra - 1] ? posCorte(f, f.cortes[arrastra - 1]) : 0;
+        const maximo = f.cortes[arrastra + 1] ? posCorte(f, f.cortes[arrastra + 1]) : f.valor;
+        const p = Math.min(Math.max(ajustar(q), minimo), maximo);
+        if (p > minimo + 1e-6 && p < maximo - 1e-6) { f.cortes[arrastra] = corteDesdePos(f, p); pintarGrupos(); tablaGrupos(f, caja); }
+      } else {
+        const b = ajustar(q); f.sel = [Math.min(ancla.v, b), Math.max(ancla.v, b)]; pintarSel(); resumenSel(f, caja);
+      }
+      return;
+    }
+    banda.classList.toggle("mover", editable && umbralCerca(q) < 0 && corteCerca(q) >= 0);
+    banda.classList.toggle("subir", umbralCerca(q) >= 0);
+    mostrar(q.i, q.px, q.py);
+  });
+  banda.addEventListener("pointerup", e => {
+    if (!ancla) return;
+    const q = lugar(e);
+    if (!movido) {
+      f.sel = null;
+      const j = corteCerca(q);
+      if (j >= 0) { f.cortes.splice(j, 1); f.destinos.splice(j + 1, 1); }      // clic sobre un corte: lo quita; el grupo unido hereda el destino del de la izquierda
+      else if (arrastraUmbral < 0) {
+        const p = ajustar(q);
+        if (p > 1e-6 && p < f.valor - 1e-6 && f.cortes.every(c => Math.abs(posCorte(f, c) - p) > 1e-6)) {
+          const s = segmentos(f).findIndex(s => p < s.b);                      // el grupo partido deja su destino a las dos mitades
+          f.cortes.splice(s, 0, corteDesdePos(f, p)); f.destinos.splice(s, 0, f.destinos[s]);
+        }
+      }
+    } else if (f.sel && f.sel[1] - f.sel[0] < 0.005) f.sel = null;
+    ancla = null; arrastra = -1; arrastraUmbral = -1;
+    cambio();
+  });
+  banda.addEventListener("pointercancel", () => { ancla = null; arrastra = -1; arrastraUmbral = -1; });
+  banda.addEventListener("pointerleave", () => { if (!ancla) ocultar(); });
+}
+
+function resumenSel(f, caja) {
+  const c = caja.querySelector(".sel"); if (!c) return;
+  c.replaceChildren();
+  if (!f.sel) { c.hidden = true; return; }
+  c.hidden = false;
+  const [a, b] = f.sel, r = cuenta(f, a, b);
+  if (!r.n) { c.hidden = true; return; }
+  const dato = (rot, val) => { const d = el("span", { class: "dato" }, c, rot + " "); el("b", {}, d, val); };
+  dato("Importe", eur(r.v, 2));
+  if (f.vl) dato("Participaciones", part(r.np, f.aprox));
+  dato("Plusvalía", eur(r.g, 2));
+  dato("Plusvalía en %", pct(100 * r.g / r.v));
+  el("span", {}, c, `${r.n} lote${r.n > 1 ? "s" : ""}, del ${fecha(r.primero.f)} al ${fecha(r.ultimo.f)}` + (r.parciales ? ` · ${r.parciales} cortado${r.parciales > 1 ? "s" : ""}, a prorrata` : ""));
+  const bg = el("button", { type: "button", class: "menor" }, c, "Convertir en grupo");
+  bg.addEventListener("click", () => {
+    [a, b].forEach(p => {
+      if (p > 1e-6 && p < f.valor - 1e-6 && f.cortes.every(c => Math.abs(posCorte(f, c) - p) > 1e-6)) {
+        const s = segmentos(f).findIndex(s => p < s.b);
+        f.cortes.splice(s, 0, corteDesdePos(f, p)); f.destinos.splice(s, 0, f.destinos[s]);
+      }
+    });
+    f.sel = null; cambio();
+  });
+  const bq = el("button", { type: "button", class: "menor" }, c, "Quitar selección");
+  bq.addEventListener("click", () => { f.sel = null; f.pintarSel(); resumenSel(f, caja); });
+}
+
+// ---------- Interfaz ----------
+function selectDestino(f, valor, alCambiar) {
+  const sel = el("select", { "aria-label": "Fondo de destino" });
+  const op = (v, t) => { const o = el("option", { value: v }, sel, t); if (v === valor) o.selected = true; };
+  op(QUEDA, "Se queda en el fondo");
+  destinos().filter(d => d.id !== f.isin).forEach(d => op(d.id, "→ " + d.nombre));
+  op("__nuevo", "→ Nuevo fondo…");
+  sel.addEventListener("change", () => {
+    let v = sel.value;
+    if (v === "__nuevo") {
+      const id = "nuevo" + Date.now().toString(36);
+      S.nuevos.push({ id, nombre: "Fondo nuevo " + (S.nuevos.length + 1) }); v = id;
+    }
+    alCambiar(v); cambio();
+  });
+  return sel;
+}
+
+function tablaGrupos(f, caja) {
+  const cont = caja.querySelector(".grupos"); cont.replaceChildren();
+  const gs = grupos(f);
+  const t = el("table", {}, cont), cab = el("tr", {}, el("thead", {}, t));
+  ["Grupo", "Lotes", "Desde", "Hasta"].concat(f.vl ? ["Participaciones"] : [], ["Valor", "Coste", "Plusvalía", "%", "Destino"])
+    .forEach((h, i) => el("th", { class: i <= 3 || h === "Destino" ? "izq" : "" }, cab, h));
+  const tb = el("tbody", {}, t);
+  gs.forEach(g => {
+    const tr = el("tr", {}, tb);
+    const c1 = el("td", { class: "izq" }, tr); el("i", { class: "chip", style: `background:${colorDest(g.dest)}` }, c1); c1.append(String(g.k));
+    el("td", { class: "izq" }, tr, g.n + (g.parciales ? ` (${g.parciales} cortado${g.parciales > 1 ? "s" : ""})` : ""));
+    el("td", { class: "izq" }, tr, g.primero ? fecha(g.primero.f) : "");
+    el("td", { class: "izq" }, tr, g.ultimo ? fecha(g.ultimo.f) : "");
+    if (f.vl) el("td", {}, tr, part(g.np, f.aprox));
+    el("td", {}, tr, eur(g.v, 2)); el("td", {}, tr, eur(g.c, 2)); el("td", {}, tr, eur(g.g, 2)); el("td", {}, tr, g.v ? pct(100 * g.g / g.v) : "");
+    el("td", { class: "izq" }, tr).appendChild(selectDestino(f, g.dest, v => { f.destinos[g.j] = v; }));
+  });
+  const tt = el("tr", { class: "total" }, tb);
+  el("td", { class: "izq" }, tt, "Total"); el("td", { class: "izq" }, tt, String(f.lotes.length)); el("td", {}, tt); el("td", {}, tt);
+  if (f.vl) el("td", {}, tt, part(f.part, f.aprox));
+  el("td", {}, tt, eur(f.valor, 2)); el("td", {}, tt, eur(f.coste, 2)); el("td", {}, tt, eur(f.lat, 2)); el("td", {}, tt, pct(100 * f.lat / f.valor)); el("td", {}, tt);
+
+  if (f.umbral) {
+    const r = resumenUmbral(f), p = el("p", { class: "sub", style: "margin-top:6px" }, cont);
+    for (let b = r.length - 1; b >= 0; b--) {
+      const x = r[b];
+      el("b", {}, p, "Lotes " + nombreBanda(f, b));
+      p.append(`: ${x.n} lotes · ${f.vl ? part(x.np, f.aprox) + " · " : ""}${eur(x.v, 2)} · plusvalía ${eur(x.g, 2)} (${x.v ? pct(100 * x.g / x.v) : "—"}) → ${nombreDest(f.umbral.dests[b])}`);
+      el("br", {}, p);
+    }
+    if (gs.length > r.length) p.append(`Como van por FIFO, salen en ${gs.length} grupos; sube el importe mínimo por grupo para fundir los tramos pequeños.`);
+  }
+
+  // Traspasos de este fondo, en orden
+  const ps = caja.querySelector(".pasos"); ps.replaceChildren();
+  const ts = traspasos(f);
+  if (!ts.length) { el("li", { class: "vacio" }, ps, "Sin traspasos: todos los grupos se quedan."); return; }
+  ts.forEach(t => {
+    const li = el("li", {}, ps);
+    li.append("Traspaso " + t.n + ": ");
+    el("b", {}, li, f.vl ? part(t.g.np, f.aprox) : eur(t.g.v, 2));
+    li.append(` del grupo ${t.g.k} (${f.vl ? eur(t.g.v, 2) + ", " : ""}plusvalía ${eur(t.g.g, 2)}) → ${nombreDest(t.g.dest)}`);
+    if (t.imposible) el("span", { class: "aviso" }, li, " · No es posible tal cual: por FIFO saldría antes un grupo que has marcado «se queda». Traspásalo a otro fondo y devuélvelo después, o cambia los cortes.");
+  });
+}
+
+function tablaLotes(f, cont) {
+  const t = el("table", {}, cont), cab = el("tr", {}, el("thead", {}, t));
+  const gs = segmentos(f);
+  ["Fecha"].concat(f.vl ? ["Participaciones"] : [], ["Coste", "Valor", "Plusvalía", "%", "Valor acumulado", "Plusvalía acumulada"], gs.length > 1 ? ["Grupo"] : [], f.lotes.some(l => l.o) ? ["Procedencia"] : [])
+    .forEach(h => el("th", {}, cab, h));
+  const tb = el("tbody", {}, t);
+  f.lotes.forEach(l => {
+    const tr = el("tr", {}, tb);
+    const g = gs.find(s => l.x0 < s.b - 1e-6);
+    [fecha(l.f)].concat(f.vl ? [part(l.n, f.aprox)] : [], [eur(l.c, 2), eur(l.v, 2), eur(l.g, 2), pct(l.p), eur(l.x0 + l.v, 2), eur(l.ga, 2)], gs.length > 1 ? [g ? String(g.j + 1) : ""] : [], f.lotes.some(l => l.o) ? [l.o || "Propio"] : [])
+      .forEach(c => el("td", {}, tr, c));
+  });
+}
+
+function cajaFondo(f, cont, editable) {
+  const caja = el("section", { class: "card" }, cont);
+  const cab = el("div", { class: "cab" }, caja);
+  el("h2", {}, cab, f.nombre);
+  if (editable) {
+    const b = el("button", { type: "button", class: "menor" }, cab, "Quitar fondo");
+    b.addEventListener("click", () => { delete S.fondos[f.isin]; Object.values(S.fondos).forEach(o => { o.destinos = o.destinos.map(d => d === f.isin ? QUEDA : d); }); cambio(); });
+  }
+  el("p", { class: "sub" }, caja, `${f.isin ? f.isin + " · " : ""}${f.lotes.length} lotes · ${f.vl ? part(f.part, f.aprox) + " · " : ""}valor ${eur(f.valor, 2)} · coste ${eur(f.coste, 2)} · plusvalía latente ${eur(f.lat, 2)} (${pct(100 * f.lat / f.valor)})`);
+  if (editable) {
+    const vl = el("div", { class: "vl" }, caja);
+    const l1 = el("label", {}, vl, "Valor liquidativo ");
+    const iVl = el("input", { type: "number", step: "0.0001", min: "0", id: "vl-" + f.isin, value: f.vlManual ?? "", placeholder: f.vlOrd ? fmt(f.vlOrd, 4) : "—" }, l1);
+    iVl.addEventListener("change", () => { f.vlManual = parseFloat(iVl.value) || null; if (f.vlManual) f.partManual = null; cambio(); });
+    const l2 = el("label", {}, vl, "o participaciones totales del fondo ");
+    const iP = el("input", { type: "number", step: "0.0001", min: "0", id: "part-" + f.isin, value: f.partManual ?? "", placeholder: f.part ? fmt(f.part, 4) : "—" }, l2);
+    iP.addEventListener("change", () => { f.partManual = parseFloat(iP.value) || null; if (f.partManual) f.vlManual = null; cambio(); });
+    el("span", {}, vl, f.partManual ? "Participaciones exactas a partir del total que has escrito." :
+      f.vlManual ? "Participaciones calculadas con el valor liquidativo que has escrito." :
+      f.vlOrd ? `Valor liquidativo ${fmt(f.vlOrd, 4)} deducido de las órdenes de compra: participaciones aproximadas (≈).` :
+      "Sin valor liquidativo: carga el CSV de órdenes del fondo o escribe el VL o las participaciones totales para ver participaciones.");
+  }
+  if (editable) {
+    const u = el("div", { class: "vl umbral" }, caja);
+    if (!f.umbral) {
+      const b = el("button", { type: "button", class: "menor" }, u, "Repartir por umbrales de plusvalía");
+      b.addEventListener("click", () => {
+        f.umbral = { ts: sugerirUmbrales(f, 2), minV: minPorDefecto(f), dests: [QUEDA, QUEDA] };
+        if (!f.umbral.ts.length) f.umbral.ts = [Math.round(100 * f.lat / f.valor * 10) / 10];
+        aplicarUmbral(f); cambio();
+      });
+      el("span", {}, u, "Dime en cuántos fondos repartir los lotes y te sugiero los umbrales; los lotes de cada banda de plusvalía van a un fondo. También puedes cortar a mano sobre la gráfica.");
+    } else {
+      const k = f.umbral.ts.length + 1;
+      const l0 = el("label", {}, u, "Repartir en ");
+      const iK = el("input", { type: "number", step: "1", min: "2", max: "6", id: "k-" + f.isin, value: k, style: "width:6ch" }, l0); l0.append(" fondos");
+      iK.addEventListener("change", () => {
+        const nk = Math.min(6, Math.max(2, parseInt(iK.value) || 2));
+        f.umbral.ts = sugerirUmbrales(f, nk); aplicarUmbral(f); cambio();
+      });
+      const bs = el("button", { type: "button", class: "menor" }, u, "Sugerir umbrales");
+      bs.addEventListener("click", () => { f.umbral.ts = sugerirUmbrales(f, k); aplicarUmbral(f); cambio(); });
+      const l2 = el("label", {}, u, "grupos de al menos ");
+      const iM = el("input", { type: "number", step: "50", min: "0", id: "min-" + f.isin, value: f.umbral.minV }, l2); l2.append(" €");
+      iM.addEventListener("change", () => { f.umbral.minV = Math.max(0, parseFloat(iM.value) || 0); aplicarUmbral(f); cambio(); });
+      const b = el("button", { type: "button", class: "menor" }, u, "Quitar umbrales");
+      b.addEventListener("click", () => { f.umbral = null; cambio(); });
+      const fila = el("div", { class: "vl" }, caja);
+      fila.append(k > 2 ? "Umbrales " : "Umbral ");
+      f.umbral.ts.forEach((t, j) => {
+        const l = el("label", {}, fila);
+        const iT = el("input", { type: "number", step: "0.1", id: `umbral-${f.isin}-${j}`, value: t, "aria-label": "Umbral " + (j + 1) }, l); l.append(" %");
+        iT.addEventListener("change", () => { f.umbral.ts[j] = parseFloat(iT.value) || 0; aplicarUmbral(f); cambio(); });
+      });
+      const bandas = el("div", { class: "vl bandas" }, caja);
+      for (let b = k - 1; b >= 0; b--) {
+        const l = el("label", {}, bandas); el("span", {}, l, nombreBanda(f, b) + " ");
+        l.appendChild(selectDestino(f, f.umbral.dests[b], v => { f.umbral.dests[b] = v; aplicarUmbral(f); }));
+      }
+    }
+  }
+  const plot = el("div", { class: "plot" }, caja);
+  el("div", { class: "tip" }, plot);
+  if (editable) {
+    el("p", { class: "ayuda" }, caja, "Clic sobre la gráfica: corta por el límite de lote más cercano (con Alt ⌥, por donde esté el cursor). Arrastra un corte para moverlo; clic sobre él para quitarlo. Arrastra sobre las barras para ver las cifras de un tramo; arrastra una línea de umbral para subirla o bajarla.");
+    el("div", { class: "sel", hidden: "" }, caja);
+    el("div", { class: "grupos tabla" }, caja);
+    el("h3", {}, caja, "Traspasos a pedir, en este orden");
+    el("ol", { class: "pasos" }, caja);
+  }
+  const det = el("details", {}, caja);
+  el("summary", {}, det, "Ver los lotes en tabla");
+  const tc = el("div", { class: "tabla lotes" }, det);
+  det.addEventListener("toggle", () => { if (det.open) { tc.replaceChildren(); tablaLotes(f, tc); } });
+  return caja;
+}
+
+function leyenda() {
+  const c = document.getElementById("leyenda"); c.replaceChildren();
+  const s0 = el("span", {}, c); el("i", { class: "chip", style: "background:var(--queda)" }, s0); s0.append("Se queda");
+  destinos().forEach(d => {
+    if (!usado(d.id)) return;
+    const s = el("span", {}, c); el("i", { class: "chip", style: `background:${colorDest(d.id)}` }, s);
+    const n = S.nuevos.find(n => n.id === d.id);
+    if (n) {
+      const i = el("input", { type: "text", id: "nombre-" + n.id, value: n.nombre, "aria-label": "Nombre del fondo nuevo" }, s);
+      i.addEventListener("change", () => { n.nombre = i.value.trim() || n.nombre; cambio(); });
+    } else s.append(d.nombre);
+  });
+  S.nuevos = S.nuevos.filter(n => usado(n.id));   // un fondo nuevo sin grupos asignados desaparece
+}
+
+function textoPlan() {
+  const lineas = [];
+  Object.values(S.fondos).sort((a, b) => b.valor - a.valor).forEach(f => {
+    const ts = traspasos(f);
+    if (!ts.length) return;
+    lineas.push(`${f.nombre} (${f.isin})`);
+    ts.forEach(t => lineas.push(`  ${t.n}. ${f.vl ? part(t.g.np, f.aprox) : eur(t.g.v, 2)} (${f.vl ? eur(t.g.v, 2) + ", " : ""}${t.g.n} lotes del ${fecha(t.g.primero.f)} al ${fecha(t.g.ultimo.f)}, plusvalía ${eur(t.g.g, 2)}) → ${nombreDest(t.g.dest)}${t.imposible ? "  [no es posible tal cual]" : ""}`));
+  });
+  return lineas.join("\n");
+}
+
+function plan() {
+  const c = document.getElementById("plan"); c.replaceChildren();
+  el("h2", {}, c, "Plan de traspasos");
+  const texto = textoPlan();
+  if (!texto) { el("p", { class: "sub" }, c, "Todavía no hay ningún grupo con destino. Corta un fondo en grupos y elige a dónde va cada uno."); return; }
+  el("p", { class: "sub" }, c, "Dentro de cada fondo los traspasos salen en este orden, y cada uno se pide cuando el anterior ha terminado. Si un fondo recibe lotes y también los saca, pide primero sus salidas: los lotes que entran conservan su fecha y se colocan en su FIFO.");
+  el("pre", {}, c, texto);
+  const b = el("button", { type: "button", class: "menor", style: "margin-top:8px" }, c, "Copiar el plan");
+  b.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(texto); b.textContent = "Copiado"; }
+    catch (_) { const r = document.createRange(); r.selectNodeContents(c.querySelector("pre")); getSelection().removeAllRanges(); getSelection().addRange(r); b.textContent = "Selecciona y copia"; }
+    setTimeout(() => { b.textContent = "Copiar el plan"; }, 1500);
+  });
+}
+
+function resultadoUI() {
+  const c = document.getElementById("resultado"); c.replaceChildren();
+  const lista = resultado().filter(r => r.cambia);
+  if (!lista.length) return;
+  el("h2", { style: "margin:24px 0 8px" }, c, "Cómo quedan los fondos tras el plan");
+  el("p", { class: "intro" }, c, "Los lotes traspasados conservan su fecha y su coste, así que en el fondo de destino se intercalan por fecha con los que ya había. En gris, los lotes propios del fondo; en color, los que recibe.");
+  lista.forEach(r => {
+    r.id = r.id; r.cajaRes = cajaFondo(r, c, false);
+    dibujar(r, r.cajaRes, false);
+  });
+}
+
+// Reembolso: para un importe dado, de qué fondos (tal como quedan tras el plan) sacarlo aflorando la menor plusvalía.
+// En cada paso toma, entre los lotes más antiguos aún disponibles de cada fondo (los que saldrían por FIFO), el de menor plusvalía en %.
+function planReembolso(fondos, X) {
+  const h = fondos.map(r => ({ r, i: 0, v: 0, c: 0, g: 0, np: 0, n: 0, parcial: false }));
+  let falta = X;
+  while (falta > 0.005) {
+    const cand = h.filter(x => x.i < x.r.lotes.length);
+    if (!cand.length) break;
+    const x = cand.reduce((a, b) => a.r.lotes[a.i].p <= b.r.lotes[b.i].p ? a : b);
+    const l = x.r.lotes[x.i], parte = Math.min(l.v, falta), fr = parte / l.v;
+    x.v += parte; x.c += l.c * fr; x.g += l.g * fr; if (x.r.vl) x.np += l.n * fr; x.n++; falta -= parte;
+    if (fr < 0.9999) x.parcial = true;
+    x.i++;
+  }
+  return { usados: h.filter(x => x.n), falta };
+}
+
+function reembolsoUI() {
+  const c = document.getElementById("reembolso"); c.replaceChildren();
+  el("h2", {}, c, "Reembolso");
+  const fondos = resultado();
+  if (!fondos.length) { el("p", { class: "sub" }, c, "No hay fondos."); return; }
+  const hayPlan = fondos.some(r => r.cambia);
+  el("p", { class: "sub" }, c, `Sobre los fondos ${hayPlan ? "tal como quedan tras el plan" : "tal como están ahora"}: de cuáles reembolsar para aflorar la menor plusvalía posible. En cada paso se toma, entre los lotes que saldrían primero por FIFO de cada fondo, el de menor plusvalía en %.`);
+  const fila = el("div", { class: "vl", style: "margin-top:8px" }, c);
+  const l = el("label", {}, fila, "Necesito ");
+  const i = el("input", { type: "number", step: "100", min: "0", id: "reembolso-importe", value: S.reembolso ?? "", placeholder: "importe" }, l); l.append(" €");
+  i.addEventListener("change", () => { S.reembolso = parseFloat(i.value) || null; cambio(); });
+  const X = S.reembolso;
+  if (!X) return;
+  const { usados, falta } = planReembolso(fondos, X);
+  const tc = el("div", { class: "tabla" }, c), t = el("table", {}, tc), cab = el("tr", {}, el("thead", {}, t));
+  const conPart = usados.some(x => x.r.vl);
+  ["Fondo", "Lotes"].concat(conPart ? ["Participaciones"] : [], ["Importe", "Coste", "Plusvalía", "%"]).forEach((h, k) => el("th", { class: k < 2 ? "izq" : "" }, cab, h));
+  const tb = el("tbody", {}, t);
+  let V = 0, G = 0;
+  usados.sort((a, b) => b.v - a.v).forEach(x => {
+    const tr = el("tr", {}, tb);
+    const c1 = el("td", { class: "izq" }, tr); el("i", { class: "chip", style: `background:${colorDest(x.r.id)}` }, c1); c1.append(x.r.nombre);
+    el("td", { class: "izq" }, tr, x.n + (x.parcial ? " (el último, parcial)" : ""));
+    if (conPart) el("td", {}, tr, x.r.vl ? part(x.np, x.r.aprox) : "—");
+    el("td", {}, tr, eur(x.v, 2)); el("td", {}, tr, eur(x.c, 2)); el("td", {}, tr, eur(x.g, 2)); el("td", {}, tr, pct(100 * x.g / x.v));
+    V += x.v; G += x.g;
+  });
+  const tt = el("tr", { class: "total" }, tb);
+  el("td", { class: "izq" }, tt, "Total"); el("td", {}, tt); if (conPart) el("td", {}, tt);
+  el("td", {}, tt, eur(V, 2)); el("td", {}, tt, eur(V - G, 2)); el("td", {}, tt, eur(G, 2)); el("td", {}, tt, V ? pct(100 * G / V) : "");
+  if (falta > 0.005) el("p", { class: "sub aviso" }, c, `Faltan ${eur(falta, 2)}: entre todos los fondos no llega a ${eur(X, 2)}.`);
+  // Comparación: sacarlo todo de un solo fondo
+  el("h3", {}, c, `Si lo sacaras todo de un solo fondo (${eur(X, 2)} por FIFO)`);
+  const t2c = el("div", { class: "tabla" }, c), t2 = el("table", {}, t2c), cab2 = el("tr", {}, el("thead", {}, t2));
+  ["Fondo", "Lotes"].concat(conPart ? ["Participaciones"] : [], ["Plusvalía", "%"]).forEach((h, k) => el("th", { class: k < 2 ? "izq" : "" }, cab2, h));
+  const tb2 = el("tbody", {}, t2);
+  fondos.map(r => ({ r, q: r.valor >= X ? cuenta(r, 0, X) : null })).sort((a, b) => (a.q ? a.q.g : Infinity) - (b.q ? b.q.g : Infinity)).forEach(({ r, q }) => {
+    const tr = el("tr", {}, tb2);
+    const c1 = el("td", { class: "izq" }, tr); el("i", { class: "chip", style: `background:${colorDest(r.id)}` }, c1); c1.append(r.nombre);
+    if (!q) { el("td", { class: "izq", colspan: conPart ? 4 : 3 }, tr, `No llega: tiene ${eur(r.valor, 2)}`); return; }
+    el("td", { class: "izq" }, tr, q.n + (q.parciales ? " (el último, parcial)" : ""));
+    if (conPart) el("td", {}, tr, r.vl ? part(q.np, r.aprox) : "—");
+    el("td", {}, tr, eur(q.g, 2)); el("td", {}, tr, pct(100 * q.g / q.v));
+  });
+}
+
+function render() {
+  const cont = document.getElementById("fondos"); cont.replaceChildren();
+  document.getElementById("ejemplo").hidden = !S.ejemplo;
+  const fondos = Object.values(S.fondos);
+  fondos.forEach(preparar);
+  fondos.sort((a, b) => b.valor - a.valor);
+  const todos = fondos.flatMap(f => f.lotes.map(l => l.p));
+  PCT_MAX = todos.length ? Math.max(...todos, 0) : 1; PCT_MIN = todos.length ? Math.min(...todos, 0) : 0;
+  leyenda();
+  if (!fondos.length) el("p", { class: "vacio" }, cont, "No hay ningún fondo cargado.");
+  fondos.forEach(f => { f.caja = cajaFondo(f, cont, true); dibujar(f, f.caja, true); tablaGrupos(f, f.caja); resumenSel(f, f.caja); });
+  plan();
+  resultadoUI();
+  reembolsoUI();
+}
+function cambio() { guardar(); render(); }
+
+// ---------- Arranque ----------
+async function cargar(lista) {
+  const avisos = await procesarArchivos([...lista]);
+  const ul = document.getElementById("avisos"); ul.replaceChildren();
+  if (!avisos.length) avisos.push({ mal: true, t: "No había ningún CSV en lo que has elegido." });
+  avisos.forEach(a => el("li", { class: a.mal ? "mal" : "" }, ul, a.t));
+  cambio();
+}
+document.getElementById("archivos").addEventListener("change", e => { cargar(e.target.files); e.target.value = ""; });
+document.getElementById("carpeta").addEventListener("change", e => { cargar(e.target.files); e.target.value = ""; });
+const zona = document.getElementById("zona");
+["dragenter", "dragover"].forEach(ev => zona.addEventListener(ev, e => { e.preventDefault(); zona.classList.add("sobre"); }));
+["dragleave", "drop"].forEach(ev => zona.addEventListener(ev, e => { e.preventDefault(); zona.classList.remove("sobre"); }));
+zona.addEventListener("drop", async e => cargar(await entradasDeDrop(e.dataTransfer)));
+document.getElementById("vaciar").addEventListener("click", () => { S = estadoVacio(); document.getElementById("avisos").replaceChildren(); cambio(); });
+let t; window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(render, 120); });
+
+S = cargarEstado() || estadoEjemplo();
+render();
+</script>
+</body>
+</html>
