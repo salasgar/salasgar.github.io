@@ -776,9 +776,9 @@ select {
           <option value="n">n (puntos)</option>
           <option value="m">m (conexiones)</option>
           <option value="n+m">n + m</option>
-          <option value="tn">n(n+1)/2</option>
-          <option value="tm">m(m+1)/2</option>
-          <option value="tn+tm">n(n+1)/2 + m(m+1)/2</option>
+          <option value="n2">n²</option>
+          <option value="m2">m²</option>
+          <option value="n2+m2">n² + m²</option>
         </select>
       </div>
       <p class="nota">n = puntos del grupo, m = conexiones entre ellos. Con cruces prohibidos, una línea no se traza si cruzaría una línea de otro color ya trazada.</p>
@@ -823,7 +823,7 @@ select {
       <li>La partida termina cuando <strong>no queda ninguna casilla vacía</strong>. Gana quien tenga más puntos.</li>
     </ul>
     <p>Variante «sin bloqueadores»: cada turno es solo poner un punto.</p>
-    <p>Más variantes, en «Nueva partida» → «Variantes del juego»: si una línea puede cruzar a otra de distinto color; si cuenta solo el grupo mayor o la suma de todos los grupos; y cuánto vale un grupo de n puntos y m conexiones (n, m, n + m, n(n+1)/2, m(m+1)/2 o la suma de las dos últimas).</p>
+    <p>Más variantes, en «Nueva partida» → «Variantes del juego»: si una línea puede cruzar a otra de distinto color; si cuenta solo el grupo mayor o la suma de todos los grupos; y cuánto vale un grupo de n puntos y m conexiones (n, m, n + m, n², m² o n² + m²).</p>
     <p>También puedes jugar contra la máquina: en «Nueva partida» elige «Máquina» para el jugador que quieras y su nivel (fácil, medio o difícil).</p>
     <p>Si no quieres seguir, pulsa «Rendirse» en tu turno: quedas fuera (tus puntos se quedan en el tablero, pero ya no puedes ganar) y los demás continúan; si solo queda un jugador, gana. Puedes deshacerlo.</p>
     <p>Con teclado: flechas para moverte por el tablero, Enter o espacio para poner la pieza, y Ctrl+Z (⌘Z en Mac) para deshacer.</p>
@@ -850,14 +850,13 @@ const VECINOS = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [
 const REGLAS = {
   cruces: ['permitidos', 'prohibidos'],          // ¿puede una línea cruzar a otra de distinto color?
   puntuacion: ['mayor', 'suma'],                 // cuenta solo el grupo mayor, o la suma de todos los grupos
-  valor: ['n', 'm', 'n+m', 'tn', 'tm', 'tn+tm'],  // valor de un grupo de n puntos y m conexiones; t(k) = k(k+1)/2
+  valor: ['n', 'm', 'n+m', 'n2', 'm2', 'n2+m2'],  // valor de un grupo de n puntos y m conexiones (n2 = n², m2 = m²)
 };
 
 function enteroEntre(valor, minimo, maximo) {
   return Number.isInteger(valor) && valor >= minimo && valor <= maximo;
 }
 function esPunto(casilla) { return casilla !== 0 && casilla !== 'X'; }
-const triangular = k => k * (k + 1) / 2;
 
 class Partida {
   #opciones; #tablero; #jugador; #accion; #vacias; #puntuaciones; #jugadas; #rehacer;
@@ -890,9 +889,9 @@ class Partida {
       case 'n': return n;
       case 'm': return m;
       case 'n+m': return n + m;
-      case 'tn': return triangular(n);
-      case 'tm': return triangular(m);
-      case 'tn+tm': return triangular(n) + triangular(m);
+      case 'n2': return n * n;
+      case 'm2': return m * m;
+      case 'n2+m2': return n * n + m * m;
     }
     throw new RangeError('valor de grupo desconocido: ' + valor);
   }
@@ -1448,8 +1447,8 @@ const DEMO = [[2, 2], [7, 1], [6, 3], [3, 2], [3, 3], [5, 3], [6, 4], [4, 4], [2
 const CLAVE = { partida: 'conecta-puntos.partida', opciones: 'conecta-puntos.opciones', tema: 'conecta-puntos.tema', sonido: 'conecta-puntos.sonido' };
 const LIMITES = { jugadores: [2, 4], columnas: [4, 16], filas: [4, 16] };
 const OPCIONES_DEFECTO = { jugadores: 2, columnas: 10, filas: 7, bloqueadores: true, cruces: 'permitidos', puntuacion: 'mayor', valor: 'n', tipos: ['persona', 'persona', 'persona', 'persona'], niveles: ['medio', 'medio', 'medio', 'medio'] };
-const REGLAS_UI = { cruces: ['permitidos', 'prohibidos'], puntuacion: ['mayor', 'suma'], valor: ['n', 'm', 'n+m', 'tn', 'tm', 'tn+tm'] };
-const NOMBRE_VALOR = { 'n': 'n', 'm': 'm', 'n+m': 'n + m', 'tn': 'n(n+1)/2', 'tm': 'm(m+1)/2', 'tn+tm': 'n(n+1)/2 + m(m+1)/2' };
+const REGLAS_UI = { cruces: ['permitidos', 'prohibidos'], puntuacion: ['mayor', 'suma'], valor: ['n', 'm', 'n+m', 'n2', 'm2', 'n2+m2'] };
+const NOMBRE_VALOR = { 'n': 'n', 'm': 'm', 'n+m': 'n + m', 'n2': 'n²', 'm2': 'm²', 'n2+m2': 'n² + m²' };
 const FONDO = { light: '#f9f9f7', dark: '#0d0d0d' };   // para <meta name="theme-color">
 const NIVELES_MAQUINA = ['facil', 'medio', 'dificil'];
 const RETRASO_MAQUINA = { marcar: 600, bloquear: 500 };   // ms de pausa antes de cada acción de la máquina, para que se vea la jugada anterior
