@@ -1,0 +1,1568 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Conecta puntos</title>
+<meta name="description" content="Juego de tablero para dos o más jugadores en el mismo dispositivo: conecta tus puntos y bloquea a los demás.">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M9 23 21 11' stroke='%232a78d6' stroke-width='4'/%3E%3Ccircle cx='9' cy='23' r='6' fill='%232a78d6'/%3E%3Ccircle cx='21' cy='11' r='6' fill='%232a78d6'/%3E%3Ccircle cx='25' cy='25' r='5' fill='%23e34948'/%3E%3C/svg%3E">
+<script>
+// Aplica el tema guardado (o el de ?tema=) antes del primer pintado, para que no parpadee.
+(function () {
+  try {
+    var t = new URLSearchParams(location.search).get('tema');
+    var tema = t === 'oscuro' ? 'dark' : t === 'claro' ? 'light' : localStorage.getItem('conecta-puntos.tema');
+    if (tema === 'dark' || tema === 'light') document.documentElement.dataset.theme = tema;
+  } catch (e) { /* sin localStorage: tema automático */ }
+})();
+</script>
+<style>
+:root {
+  color-scheme: light;
+  --fondo: #f9f9f7;
+  --superficie: #ffffff;
+  --superficie-2: #efefec;
+  --texto: #1d1d1b;
+  --texto-suave: #63635e;
+  --borde: #dcdcd6;
+  --borde-fuerte: #b9b9b2;
+  --tablero: #ffffff;
+  --rejilla: rgba(0, 0, 0, .7);
+  --bloqueador: #8a8a8a;
+  --velo: rgba(249, 249, 247, .8);
+  --sombra: 0 8px 24px rgba(0, 0, 0, .16);
+  --acento: #2a78d6;
+  --acento-fondo: #1f6ac4;   /* botones principales: texto blanco con contraste ≥ 4,5:1 */
+  --acento-texto: #ffffff;
+  --j1: #2a78d6; --j1-borde: #1b4f8f; --j1-texto: #1b4f8f;
+  --j2: #e34948; --j2-borde: #8f2524; --j2-texto: #8f2524;
+  --j3: #1baf7a; --j3-borde: #0f6b4a; --j3-texto: #0f6b4a;
+  --j4: #eda100; --j4-borde: #8a5e00; --j4-texto: #8a5e00;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --fondo: #0d0d0d;
+    --superficie: #1a1a19;
+    --superficie-2: #262625;
+    --texto: #ededea;
+    --texto-suave: #a5a5a0;
+    --borde: #2f2f2d;
+    --borde-fuerte: #4d4d4a;
+    --tablero: #161615;
+    --rejilla: rgba(255, 255, 255, .55);
+    --bloqueador: #5c5c59;
+    --velo: rgba(13, 13, 13, .8);
+    --sombra: 0 8px 24px rgba(0, 0, 0, .6);
+    --acento: #3987e5;
+    --acento-fondo: #2a6fc4;
+    --acento-texto: #ffffff;
+    --j1: #3987e5; --j1-borde: #9cc4f5; --j1-texto: #6aa6ee;
+    --j2: #e66767; --j2-borde: #f5a9a9; --j2-texto: #f08a8a;
+    --j3: #199e70; --j3-borde: #8fe0c2; --j3-texto: #3cc290;
+    --j4: #e0a51a; --j4-borde: #f5d78a; --j4-texto: #e0a51a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --fondo: #0d0d0d;
+  --superficie: #1a1a19;
+  --superficie-2: #262625;
+  --texto: #ededea;
+  --texto-suave: #a5a5a0;
+  --borde: #2f2f2d;
+  --borde-fuerte: #4d4d4a;
+  --tablero: #161615;
+  --rejilla: rgba(255, 255, 255, .55);
+  --bloqueador: #5c5c59;
+  --velo: rgba(13, 13, 13, .8);
+  --sombra: 0 8px 24px rgba(0, 0, 0, .6);
+  --acento: #3987e5;
+  --acento-fondo: #2a6fc4;
+  --acento-texto: #ffffff;
+  --j1: #3987e5; --j1-borde: #9cc4f5; --j1-texto: #6aa6ee;
+  --j2: #e66767; --j2-borde: #f5a9a9; --j2-texto: #f08a8a;
+  --j3: #199e70; --j3-borde: #8fe0c2; --j3-texto: #3cc290;
+  --j4: #e0a51a; --j4-borde: #f5d78a; --j4-texto: #e0a51a;
+}
+
+/* Cada elemento con clase jN recibe los colores de ese jugador; .neutro, los del texto normal. */
+.j1 { --color: var(--j1); --color-borde: var(--j1-borde); --color-texto: var(--j1-texto); }
+.j2 { --color: var(--j2); --color-borde: var(--j2-borde); --color-texto: var(--j2-texto); }
+.j3 { --color: var(--j3); --color-borde: var(--j3-borde); --color-texto: var(--j3-texto); }
+.j4 { --color: var(--j4); --color-borde: var(--j4-borde); --color-texto: var(--j4-texto); }
+.neutro { --color: var(--borde-fuerte); --color-borde: var(--texto-suave); --color-texto: var(--texto); }
+
+html, body { height: 100%; overscroll-behavior-y: none; }   /* sin «tirar para recargar» en Android */
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+[hidden] { display: none !important; }
+.oculto-visual { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.navegador-antiguo { margin: 0; padding: 12px 16px; background: #fdf3e7; color: #9a4a00; font-weight: 600; text-align: center; }
+:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+/* Disposición: móvil vertical por defecto. El tablero va pegado bajo el estado y el espacio
+   sobrante queda debajo; las acciones principales, abajo, al alcance del pulgar. */
+.app {
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 12px;
+  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  display: grid;
+  gap: 8px 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "titulo ajustes"
+    "marcador marcador"
+    "estado estado"
+    "tablero tablero"
+    "acciones acciones";
+}
+.titulo {
+  grid-area: titulo;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.logo { width: 24px; height: 24px; flex: none; }
+.ajustes { grid-area: ajustes; display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+.acciones { grid-area: acciones; display: flex; gap: 8px; justify-content: center; }
+.acciones .boton { flex: 1 1 0; max-width: 150px; min-height: 48px; }
+.etiqueta { display: none; }
+
+/* Una pulsación larga en el móvil no debe seleccionar texto (solo se deja en la ayuda) */
+.titulo, .marcador, .estado, .fin-tarjeta, .acciones, .ajustes { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+
+/* Botones */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: var(--superficie);
+  color: var(--texto);
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.boton:active:not(:disabled) { background: var(--superficie-2); }
+.boton:disabled { opacity: .4; cursor: default; }
+.boton.principal { background: var(--acento-fondo); color: var(--acento-texto); border-color: transparent; }
+.boton.principal:active { background: var(--acento-fondo); filter: brightness(.92); }
+.boton.pequeno { min-width: 0; min-height: 40px; padding: 0 12px; border-radius: 8px; font-size: 14px; }
+@media (hover: hover) {
+  .boton:hover:not(:disabled) { background: var(--superficie-2); }
+  .boton.principal:hover { background: var(--acento-fondo); filter: brightness(1.08); }
+}
+.ajustes .boton { width: 44px; padding: 0; }
+.icono {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Marcador: en móvil, una ficha por fila a ancho completo */
+.marcador {
+  grid-area: marcador;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ficha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 6px 14px 6px 12px;
+  border: 1.5px solid var(--borde);
+  border-radius: 12px;
+  background: var(--superficie);
+  line-height: 1.2;
+}
+.bolita {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color);
+  box-shadow: inset 0 0 0 2px var(--color-borde);
+}
+.ficha .nombre {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+.ficha .cifra {
+  margin-left: auto;
+  min-width: 1.2em;
+  text-align: right;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.ficha.activa {
+  border-color: var(--color);
+  box-shadow: 0 0 0 1px var(--color);
+  background: var(--superficie-2);
+  background: color-mix(in srgb, var(--color) 14%, var(--superficie));
+}
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .ficha.activa { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color) 30%, transparent); }
+}
+.ficha.ganadora { border-color: var(--color); }
+.ficha.ganadora .cifra { color: var(--color-texto); }
+.cifra.sube { animation: subir .45s ease-out; }
+@keyframes subir { 40% { transform: scale(1.35); } }
+
+/* Estado del turno: banderín con el color del jugador y una casilla en miniatura con lo que toca poner */
+.estado {
+  grid-area: estado;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  box-sizing: border-box;
+  min-height: 52px;
+  padding: 8px 14px 8px 12px;
+  border: 1px solid var(--borde);
+  border-left: 6px solid var(--color);
+  border-radius: 10px;
+  background: var(--superficie-2);
+  background: color-mix(in srgb, var(--color) 12%, var(--superficie));
+  color: var(--color-texto);
+  font-weight: 700;
+  font-size: min(20px, 5.1vw);   /* en móviles de 360-375 px cabe en una línea y el tablero no salta */
+  line-height: 1.2;
+}
+.estado-cuerpo { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.estado-textos { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.estado-texto { min-width: 0; }
+.estado-variante { font-size: 13px; font-weight: 500; color: var(--texto-suave); }   /* variante de reglas activa */
+.estado .boton.pequeno { margin-left: auto; }
+.pieza-mini {
+  box-sizing: border-box;
+  width: 1.4em;
+  height: 1.4em;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--rejilla);
+  border-radius: 3px;
+  background: var(--tablero);
+}
+.punto-mini::before {
+  content: "";
+  width: 48%;
+  height: 48%;
+  border-radius: 50%;
+  background: var(--color);
+  box-shadow: inset 0 0 0 2px var(--color-borde);
+}
+.bloqueador-mini { background: var(--bloqueador); }
+
+/* La zona es el hueco que queda; ajustarTamano() da al tablero el tamaño entero de píxeles
+   por casilla más grande que cabe en ella. */
+.zona {
+  grid-area: tablero;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.tablero { position: relative; flex: none; max-width: 100%; }
+.tablero svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--borde-fuerte);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.tablero.terminada svg { cursor: default; }
+.fondo { fill: var(--tablero); }
+.rejilla { fill: none; stroke: var(--rejilla); stroke-width: 1px; }
+.bloqueador { fill: var(--bloqueador); }
+.linea-borde { stroke: var(--color-borde); stroke-width: 14; stroke-linecap: round; }   /* debajo de cada línea, como el borde de los puntos */
+.linea { stroke: var(--color); stroke-width: 10; stroke-linecap: round; }
+.punto { fill: var(--color); stroke: var(--color-borde); stroke-width: 3; }
+.sombra { opacity: .35; pointer-events: none; }
+.cursor { display: none; fill: none; stroke: var(--acento); stroke-width: 5; pointer-events: none; }
+.cursor.visible { display: block; }
+/* Animaciones breves de las piezas (las añade el script solo si no se ha pedido menos movimiento) */
+.aparece { transform-box: fill-box; transform-origin: center; animation: aparecer .25s cubic-bezier(.3, 1.4, .6, 1) both; }
+@keyframes aparecer { from { transform: scale(.2); } to { transform: scale(1); } }
+.traza { stroke-dasharray: var(--largo); stroke-dashoffset: var(--largo); animation: trazar .3s ease-out both; }
+@keyframes trazar { to { stroke-dashoffset: 0; } }
+.sacudida { animation: sacudir .28s ease-in-out; }
+@keyframes sacudir {
+  0%, 100% { transform: translateX(0); }
+  /* dentro del SVG los px son unidades del viewBox: 12 = 12 % del lado de la casilla */
+  25% { transform: translateX(-12px); }
+  50% { transform: translateX(12px); }
+  75% { transform: translateX(-8px); }
+}
+
+/* Aviso breve de puntuación (el «gato» de Scratch), sobre el tablero */
+.aviso {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(100vw - 24px, 420px);   /* puede sobresalir de un tablero estrecho */
+  box-sizing: border-box;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--texto);
+  color: var(--fondo);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+}
+.aviso.visible { opacity: 1; }
+
+/* Panel de fin de partida, exactamente encima del tablero */
+.fin {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  width: max(100%, min(344px, 100vw - 24px));   /* en tableros estrechos el panel sobresale del tablero */
+  min-height: 100%;                              /* y en tableros bajos crece hacia abajo: nunca se recorta */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--velo);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.fin-tarjeta {
+  box-sizing: border-box;
+  width: 320px;
+  max-width: 100%;
+  padding: 16px 18px;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: var(--superficie);
+  box-shadow: var(--sombra);
+  text-align: center;
+  animation: aparecer-panel .25s ease-out;
+}
+@keyframes aparecer-panel { from { opacity: 0; transform: translateY(8px); } }
+.fin h2 { margin: 0 0 6px; font-size: 20px; }
+.fin-resultado { margin: 0 0 10px; font-weight: 600; }
+.fin-puntos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+}
+.fin-puntos li { display: flex; align-items: center; justify-content: center; gap: 7px; }
+.fin-puntos li.ganador { font-weight: 700; }
+.fin-botones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+
+/* Diálogos (sin relleno propio: así un clic en el fondo oscurecido es siempre fuera del cuadro) */
+dialog {
+  box-sizing: border-box;
+  width: min(92vw, 400px);
+  max-height: none;
+  padding: 0;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: var(--superficie);
+  color: var(--texto);
+  box-shadow: var(--sombra);
+}
+dialog::backdrop { background: rgba(0, 0, 0, .45); }
+dialog:not([open]) { display: none; }   /* navegadores sin <dialog>: que no se vean los cuadros */
+.dialogo-contenido {
+  box-sizing: border-box;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 18px 20px;
+}
+dialog h2 { margin: 0 0 10px; font-size: 20px; }
+dialog p, dialog li { line-height: 1.45; }
+dialog a { color: var(--acento); word-break: break-all; }
+.dialogo-botones { position: sticky; bottom: 0; display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; padding-top: 8px; background: var(--superficie); }   /* siempre a la vista aunque el cuadro se desplace */
+.campo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; }
+.campo > label, .campo > span { font-weight: 600; }
+.segmentos { display: inline-flex; border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; }
+.segmentos label { position: relative; }
+.segmentos input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.segmentos span { display: flex; align-items: center; justify-content: center; min-width: 46px; min-height: 42px; padding: 0 12px; font-weight: 600; }
+.segmentos label + label span { border-left: 1px solid var(--borde); }
+.segmentos input:checked + span { background: var(--acento); color: var(--acento-texto); }
+.segmentos input:focus-visible + span { box-shadow: inset 0 0 0 2px var(--superficie), inset 0 0 0 4px var(--texto); }   /* anillo doble: se ve sobre blanco y sobre el acento */
+.paso { display: inline-flex; align-items: center; gap: 4px; }
+.paso .boton { min-width: 44px; min-height: 44px; padding: 0; font-size: 22px; }
+.paso input {
+  box-sizing: border-box;
+  width: 52px;
+  height: 44px;
+  text-align: center;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: var(--fondo);
+  color: var(--texto);
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.paso input::-webkit-outer-spin-button, .paso input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* Variantes de reglas en «Nueva partida» */
+.variantes { margin: 12px 0 0; border-top: 1px solid var(--borde); padding-top: 6px; }
+.variantes summary { cursor: pointer; font-weight: 600; padding: 8px 0; }
+.nota { margin: 8px 0 0; font-size: 13px; line-height: 1.4; color: var(--texto-suave); }
+select {
+  box-sizing: border-box;
+  max-width: 62%;
+  min-height: 44px;
+  padding: 0 10px;
+  font: inherit;
+  font-weight: 600;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: var(--fondo);
+  color: var(--texto);
+}
+/* Pantallas bajas (móvil apaisado): diálogos más compactos */
+@media (max-height: 520px) {
+  .dialogo-contenido { padding: 12px 16px; }
+  .campo { margin: 6px 0; }
+  dialog h2 { margin-bottom: 6px; }
+  .dialogo-botones { margin-top: 10px; }
+}
+
+/* Pantallas medianas: las acciones principales suben a la cabecera (de momento solo con icono). */
+@media (min-width: 600px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "titulo acciones ajustes"
+      "marcador marcador marcador"
+      "estado estado estado"
+      "tablero tablero tablero";
+  }
+  .titulo { font-size: 20px; }
+  .logo { width: 28px; height: 28px; }
+  .acciones { justify-content: flex-end; gap: 6px; }
+  .acciones .boton { flex: 0 0 auto; width: 44px; max-width: none; min-height: 44px; padding: 0; }
+  .ajustes { padding-left: 12px; border-left: 1px solid var(--borde); }
+  .marcador { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .ficha { min-width: 180px; }
+  .estado { justify-self: center; min-width: min(100%, 440px); max-width: 100%; font-size: 22px; }
+}
+/* Pantallas anchas: etiquetas en las acciones y textos mayores para proyector. */
+@media (min-width: 800px) {
+  .acciones .boton { width: auto; padding: 0 12px 0 10px; }
+  .etiqueta { display: inline; }
+  .ficha .cifra { font-size: 24px; }
+  .estado { min-height: 56px; font-size: 24px; }
+}
+@media (min-width: 900px) {
+  .titulo { font-size: 22px; }
+  .acciones { gap: 8px; }
+  .acciones .boton { padding: 0 14px 0 12px; }
+}
+
+/* Móvil apaisado: columna de mandos a la izquierda y el tablero grande a la derecha. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr);
+    /* la fila flexible va vacía: el estado nunca se queda sin sitio ni se solapa con las acciones; si no cabe, la página se desplaza */
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "titulo tablero"
+      "ajustes tablero"
+      "marcador tablero"
+      "estado tablero"
+      ". tablero"
+      "acciones tablero";
+    gap: 6px 14px;
+  }
+  .titulo { font-size: 17px; }
+  .logo { width: 24px; height: 24px; }
+  .ajustes { justify-content: flex-start; padding-left: 0; border-left: 0; }
+  .marcador { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .ficha { min-width: 0; min-height: 36px; padding: 4px 8px; gap: 6px; }
+  .bolita { width: 14px; height: 14px; }
+  .ficha .cifra { font-size: 20px; }
+  .estado { justify-self: stretch; min-width: 0; align-self: start; min-height: 48px; padding: 6px 10px; gap: 6px 10px; font-size: 18px; }
+  .estado-cuerpo { gap: 10px; }
+  .zona { align-items: center; }
+  .acciones { justify-content: stretch; gap: 8px; }
+  .acciones .boton { flex: 1 1 0; width: auto; max-width: none; min-height: 44px; padding: 0; }
+  .etiqueta { display: none; }
+}
+/* Con sitio en la columna (desde 830 px de ancho), las fichas van de dos en dos y la columna queda más baja. */
+@media (orientation: landscape) and (max-height: 520px) and (min-width: 830px) {
+  .marcador { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ficha { padding: 4px 6px; }
+  .ficha .cifra { min-width: 1em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sacudida, .aparece, .cifra.sube, .fin-tarjeta { animation: none; }
+  .traza { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; }
+  .aviso { transition: none; }
+}
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-nueva" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-deshacer" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+  <symbol id="i-rehacer" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
+  <symbol id="i-sonido" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></symbol>
+  <symbol id="i-silencio" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m23 9-6 6M17 9l6 6"/></symbol>
+  <symbol id="i-ayuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-tema-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></symbol>
+  <symbol id="i-tema-claro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-tema-oscuro" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+</svg>
+
+<p class="navegador-antiguo" id="navegador-antiguo" hidden>Este navegador es demasiado antiguo para el juego. Actualízalo o abre la página con una versión reciente de Chrome, Firefox, Safari o Edge.</p>
+
+<div class="app">
+  <h1 class="titulo">
+    <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><path d="M9 23 21 11" style="stroke: var(--j1)" stroke-width="4"/><circle cx="9" cy="23" r="6" style="fill: var(--j1)"/><circle cx="21" cy="11" r="6" style="fill: var(--j1)"/><circle cx="25" cy="25" r="5" style="fill: var(--j2)"/></svg>
+    Conecta puntos
+  </h1>
+
+  <div class="ajustes">
+    <button type="button" class="boton" id="sonido" aria-pressed="true" aria-label="Sonido" title="Silenciar"><svg class="icono" aria-hidden="true"><use href="#i-sonido"/></svg></button>
+    <button type="button" class="boton" id="ayuda" aria-label="Ayuda: cómo se juega" title="Cómo se juega"><svg class="icono" aria-hidden="true"><use href="#i-ayuda"/></svg></button>
+    <button type="button" class="boton" id="tema" aria-label="Tema automático. Cambiar tema" title="Tema: automático"><svg class="icono" aria-hidden="true"><use href="#i-tema-auto"/></svg></button>
+  </div>
+
+  <ul class="marcador" id="marcador" aria-label="Marcador"></ul>
+
+  <div class="estado neutro" id="estado">
+    <span class="estado-cuerpo">
+      <span class="pieza-mini" id="estado-pieza" aria-hidden="true" hidden></span>
+      <span class="estado-textos">
+        <span class="estado-texto" id="estado-texto" aria-live="polite"></span>
+        <span class="estado-variante" id="estado-variante" hidden></span>
+      </span>
+    </span>
+    <button type="button" class="boton pequeno" id="ver-resultado" hidden>Ver resultado</button>
+  </div>
+
+  <div class="zona" id="zona">
+    <div class="tablero" id="tablero">
+      <svg id="svg" viewBox="0 0 1000 700" tabindex="0" role="group" aria-label="Tablero" aria-describedby="ayuda-teclado"></svg>
+      <span id="ayuda-teclado" class="oculto-visual">Con el teclado: flechas para moverte por las casillas y Enter o espacio para jugar.</span>
+      <div class="aviso" id="aviso" role="status"></div>
+      <section class="fin" id="fin" hidden aria-labelledby="titulo-fin">
+        <div class="fin-tarjeta">
+          <h2 id="titulo-fin" tabindex="-1">Fin de la partida</h2>
+          <p class="fin-resultado" id="fin-resultado"></p>
+          <ul class="fin-puntos" id="fin-puntos"></ul>
+          <div class="fin-botones">
+            <button type="button" class="boton principal" id="fin-nueva">Nueva partida</button>
+            <button type="button" class="boton" id="ver-tablero">Ver tablero</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="acciones">
+    <button type="button" class="boton" id="nueva" aria-label="Nueva partida" title="Nueva partida"><svg class="icono" aria-hidden="true"><use href="#i-nueva"/></svg><span class="etiqueta">Nueva partida</span></button>
+    <button type="button" class="boton" id="deshacer" aria-label="Deshacer" title="Deshacer (Ctrl+Z)"><svg class="icono" aria-hidden="true"><use href="#i-deshacer"/></svg><span class="etiqueta">Deshacer</span></button>
+    <button type="button" class="boton" id="rehacer" aria-label="Rehacer" title="Rehacer (Ctrl+Mayús+Z)"><svg class="icono" aria-hidden="true"><use href="#i-rehacer"/></svg><span class="etiqueta">Rehacer</span></button>
+  </div>
+</div>
+
+<dialog id="dialogo-nueva" aria-labelledby="titulo-nueva">
+  <form id="form-nueva" method="dialog" class="dialogo-contenido">
+    <h2 id="titulo-nueva">Nueva partida</h2>
+    <div class="campo" role="radiogroup" aria-labelledby="etiqueta-jugadores">
+      <span id="etiqueta-jugadores">Jugadores</span>
+      <div class="segmentos">
+        <label><input type="radio" name="jugadores" value="2" checked><span>2</span></label>
+        <label><input type="radio" name="jugadores" value="3"><span>3</span></label>
+        <label><input type="radio" name="jugadores" value="4"><span>4</span></label>
+      </div>
+    </div>
+    <div class="campo">
+      <label for="op-columnas">Columnas</label>
+      <div class="paso">
+        <button type="button" class="boton" data-campo="op-columnas" data-paso="-1" aria-label="Menos columnas">−</button>
+        <input id="op-columnas" name="columnas" type="number" min="4" max="16" inputmode="numeric" required>
+        <button type="button" class="boton" data-campo="op-columnas" data-paso="1" aria-label="Más columnas">+</button>
+      </div>
+    </div>
+    <div class="campo">
+      <label for="op-filas">Filas</label>
+      <div class="paso">
+        <button type="button" class="boton" data-campo="op-filas" data-paso="-1" aria-label="Menos filas">−</button>
+        <input id="op-filas" name="filas" type="number" min="4" max="16" inputmode="numeric" required>
+        <button type="button" class="boton" data-campo="op-filas" data-paso="1" aria-label="Más filas">+</button>
+      </div>
+    </div>
+    <div class="campo" role="radiogroup" aria-labelledby="etiqueta-bloqueadores">
+      <span id="etiqueta-bloqueadores">Bloqueadores</span>
+      <div class="segmentos">
+        <label><input type="radio" name="bloqueadores" value="si" checked><span>Sí</span></label>
+        <label><input type="radio" name="bloqueadores" value="no"><span>No</span></label>
+      </div>
+    </div>
+    <details class="variantes" id="variantes">
+      <summary>Variantes del juego</summary>
+      <div class="campo" role="radiogroup" aria-labelledby="etiqueta-cruces">
+        <span id="etiqueta-cruces">Cruces</span>
+        <div class="segmentos">
+          <label><input type="radio" name="cruces" value="permitidos" checked><span>Permitidos</span></label>
+          <label><input type="radio" name="cruces" value="prohibidos"><span>Prohibidos</span></label>
+        </div>
+      </div>
+      <div class="campo" role="radiogroup" aria-labelledby="etiqueta-puntuacion">
+        <span id="etiqueta-puntuacion">Puntuación</span>
+        <div class="segmentos">
+          <label><input type="radio" name="puntuacion" value="mayor" checked><span>Grupo mayor</span></label>
+          <label><input type="radio" name="puntuacion" value="suma"><span>Suma</span></label>
+        </div>
+      </div>
+      <div class="campo">
+        <label for="op-valor">Valor de un grupo</label>
+        <select id="op-valor" name="valor">
+          <option value="n">n (puntos)</option>
+          <option value="m">m (conexiones)</option>
+          <option value="n+m">n + m</option>
+          <option value="tn">n(n+1)/2</option>
+          <option value="tm">m(m+1)/2</option>
+          <option value="tn+tm">n(n+1)/2 + m(m+1)/2</option>
+        </select>
+      </div>
+      <p class="nota">n = puntos del grupo, m = conexiones entre ellos. Con cruces prohibidos, una línea no se traza si cruzaría una línea de otro color ya trazada.</p>
+    </details>
+    <div class="dialogo-botones">
+      <button type="button" class="boton" id="cancelar">Cancelar</button>
+      <button type="submit" class="boton principal" id="empezar">Empezar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dialogo-confirmar" aria-labelledby="titulo-confirmar">
+  <div class="dialogo-contenido">
+    <h2 id="titulo-confirmar">¿Empezar otra partida?</h2>
+    <p>Hay una partida a medias. Si empiezas otra, se perderá.</p>
+    <div class="dialogo-botones">
+      <button type="button" class="boton" id="descartar">Empezar otra</button>
+      <button type="button" class="boton principal" id="seguir-jugando" autofocus>Seguir jugando</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dialogo-ayuda" aria-labelledby="titulo-ayuda">
+  <div class="dialogo-contenido">
+    <h2 id="titulo-ayuda" tabindex="-1">Cómo se juega</h2>
+    <p><strong>Conecta puntos</strong> — juego para 2 jugadores (o hasta 4) en el mismo dispositivo.</p>
+    <ul>
+      <li>Por turnos, cada jugador pone <strong>un punto de su color</strong> en una casilla vacía y, después, <strong>un bloqueador</strong> (casilla gris) en otra casilla vacía.</li>
+      <li>Los puntos de un mismo jugador que están en casillas vecinas (también en diagonal) quedan <strong>conectados</strong> con una línea.</li>
+      <li>Cada jugador tiene tantos <strong>puntos</strong> como casillas tenga su grupo conectado más grande.</li>
+      <li>La partida termina cuando <strong>no queda ninguna casilla vacía</strong>. Gana quien tenga más puntos.</li>
+    </ul>
+    <p>Variante «sin bloqueadores»: cada turno es solo poner un punto.</p>
+    <p>Más variantes, en «Nueva partida» → «Variantes del juego»: si una línea puede cruzar a otra de distinto color; si cuenta solo el grupo mayor o la suma de todos los grupos; y cuánto vale un grupo de n puntos y m conexiones (n, m, n + m, n(n+1)/2, m(m+1)/2 o la suma de las dos últimas).</p>
+    <p>Con teclado: flechas para moverte por el tablero, Enter o espacio para poner la pieza, y Ctrl+Z (⌘Z en Mac) para deshacer.</p>
+    <p>Juego original en Scratch: <a href="https://scratch.mit.edu/projects/423281174/" target="_blank" rel="noopener">https://scratch.mit.edu/projects/423281174/</a></p>
+    <div class="dialogo-botones">
+      <button type="button" class="boton principal" id="cerrar-ayuda">Cerrar</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+// Un navegador sin <dialog> (Safari anterior a 15.4) tampoco entiende el motor: se avisa en vez de dejar la página en blanco.
+if (!(typeof HTMLDialogElement === 'function' && 'showModal' in HTMLDialogElement.prototype)) document.getElementById('navegador-antiguo').hidden = false;
+</script>
+
+<script id="motor">
+'use strict';
+// Motor de «Conecta puntos»: solo reglas, sin DOM (los tests lo ejecutan en Node).
+// Coordenadas (columna, fila) en base 0; el tablero se indexa tablero[fila][columna].
+// Las conexiones (aristas) entre puntos se guardan explícitamente: con la variante «cruces prohibidos»
+// dependen del orden en que se pusieron los puntos, así que no se pueden deducir del tablero.
+
+const VECINOS = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+const REGLAS = {
+  cruces: ['permitidos', 'prohibidos'],          // ¿puede una línea cruzar a otra de distinto color?
+  puntuacion: ['mayor', 'suma'],                 // cuenta solo el grupo mayor, o la suma de todos los grupos
+  valor: ['n', 'm', 'n+m', 'tn', 'tm', 'tn+tm'],  // valor de un grupo de n puntos y m conexiones; t(k) = k(k+1)/2
+};
+
+function enteroEntre(valor, minimo, maximo) {
+  return Number.isInteger(valor) && valor >= minimo && valor <= maximo;
+}
+function esPunto(casilla) { return casilla !== 0 && casilla !== 'X'; }
+const triangular = k => k * (k + 1) / 2;
+
+class Partida {
+  #opciones; #tablero; #jugador; #accion; #vacias; #puntuaciones; #jugadas; #rehacer;
+  #aristas;      // Map clave → jugador; clave = «índice menor-índice mayor», con índice = fila * columnas + columna
+  #adyacencia;   // Map índice → Set de índices conectados por una arista
+
+  constructor({ columnas = 10, filas = 7, jugadores = 2, bloqueadores = true, cruces = 'permitidos', puntuacion = 'mayor', valor = 'n' } = {}) {
+    if (!enteroEntre(columnas, 2, 30) || !enteroEntre(filas, 2, 30)) throw new RangeError('columnas y filas deben ser enteros entre 2 y 30');
+    if (!enteroEntre(jugadores, 2, 6)) throw new RangeError('jugadores debe ser un entero entre 2 y 6');
+    for (const [regla, valorRegla] of Object.entries({ cruces, puntuacion, valor })) {
+      if (!REGLAS[regla].includes(valorRegla)) throw new RangeError(`${regla} debe ser uno de: ${REGLAS[regla].join(', ')}`);
+    }
+    this.#opciones = { columnas, filas, jugadores, bloqueadores: Boolean(bloqueadores), cruces, puntuacion, valor };
+    this.#tablero = Array.from({ length: filas }, () => new Array(columnas).fill(0));
+    this.#jugador = 1;
+    this.#accion = 'marcar';
+    this.#vacias = columnas * filas;
+    this.#puntuaciones = new Array(jugadores).fill(0);
+    this.#jugadas = [];
+    this.#rehacer = [];
+    this.#aristas = new Map();
+    this.#adyacencia = new Map();
+  }
+
+  // Valor de un grupo de n puntos y m conexiones según la regla elegida.
+  static valorGrupo(n, m, valor) {
+    switch (valor) {
+      case 'n': return n;
+      case 'm': return m;
+      case 'n+m': return n + m;
+      case 'tn': return triangular(n);
+      case 'tm': return triangular(m);
+      case 'tn+tm': return triangular(n) + triangular(m);
+    }
+    throw new RangeError('valor de grupo desconocido: ' + valor);
+  }
+  // Puntuación a partir de los valores de los grupos de un jugador: el mayor o la suma.
+  static puntuacionDe(valores, modo) {
+    if (!valores.length) return 0;
+    return modo === 'suma' ? valores.reduce((a, b) => a + b, 0) : Math.max(...valores);
+  }
+
+  get columnas() { return this.#opciones.columnas; }
+  get filas() { return this.#opciones.filas; }
+  get jugadores() { return this.#opciones.jugadores; }
+  get bloqueadores() { return this.#opciones.bloqueadores; }
+  get reglas() { const { cruces, puntuacion, valor } = this.#opciones; return { cruces, puntuacion, valor }; }
+  get tablero() { return this.#tablero; }
+  get jugador() { return this.#jugador; }
+  get accion() { return this.#accion; }
+  get puntuaciones() { return this.#puntuaciones.slice(); }
+  get vacias() { return this.#vacias; }
+  get terminada() { return this.#vacias === 0; }
+  get ganadores() {
+    if (!this.terminada) return [];
+    const maximo = Math.max(...this.#puntuaciones);
+    return this.#puntuaciones.flatMap((p, i) => (p === maximo ? [i + 1] : []));
+  }
+  get jugadas() { return this.#jugadas.map(Partida.#sinAristas); }
+  get puedeDeshacer() { return this.#jugadas.length > 0; }
+  get puedeRehacer() { return this.#rehacer.length > 0; }
+
+  static #sinAristas({ jugador, accion, columna, fila }) { return { jugador, accion, columna, fila }; }
+  #dentro(columna, fila) {
+    return enteroEntre(columna, 0, this.columnas - 1) && enteroEntre(fila, 0, this.filas - 1);
+  }
+  #indice(c, f) { return f * this.columnas + c; }
+  #casilla(i) { return [i % this.columnas, Math.floor(i / this.columnas)]; }
+  #claveArista(i, k) { return i < k ? `${i}-${k}` : `${k}-${i}`; }
+  #conectar(i, k, jugador) {
+    this.#aristas.set(this.#claveArista(i, k), jugador);
+    for (const [a, b] of [[i, k], [k, i]]) {
+      if (!this.#adyacencia.has(a)) this.#adyacencia.set(a, new Set());
+      this.#adyacencia.get(a).add(b);
+    }
+  }
+  #desconectar(i, k) {
+    this.#aristas.delete(this.#claveArista(i, k));
+    for (const [a, b] of [[i, k], [k, i]]) {
+      const conjunto = this.#adyacencia.get(a);
+      if (conjunto) { conjunto.delete(b); if (!conjunto.size) this.#adyacencia.delete(a); }
+    }
+  }
+  // Una diagonal nueva desde (c, f) hacia (c + dx, f + dy) cruzaría la otra diagonal del mismo cuadrado si ya está trazada por otro jugador.
+  #cruzaria(c, f, dx, dy, jugador) {
+    const otra = this.#aristas.get(this.#claveArista(this.#indice(c + dx, f), this.#indice(c, f + dy)));
+    return otra !== undefined && otra !== jugador;
+  }
+
+  // Vecinos conectados por una arista con la casilla dada.
+  conexiones(columna, fila) {
+    if (!this.#dentro(columna, fila)) return [];
+    const conjunto = this.#adyacencia.get(this.#indice(columna, fila));
+    return conjunto ? [...conjunto].map(i => this.#casilla(i)) : [];
+  }
+
+  // Componente conexa (por aristas) que contiene el índice i; marca en `visto` las casillas recorridas.
+  #grupoDesde(i, visto) {
+    const [c0, f0] = this.#casilla(i);
+    const jugador = this.#tablero[f0][c0], casillas = [], pendientes = [i];
+    let grados = 0;
+    visto.add(i);
+    while (pendientes.length) {
+      const u = pendientes.pop();
+      casillas.push(this.#casilla(u));
+      const vecinos = this.#adyacencia.get(u);
+      if (!vecinos) continue;
+      grados += vecinos.size;
+      for (const v of vecinos) if (!visto.has(v)) { visto.add(v); pendientes.push(v); }
+    }
+    return { jugador, casillas, aristas: grados / 2 };
+  }
+
+  grupos() {
+    const visto = new Set(), res = [];
+    for (let f = 0; f < this.filas; f++) for (let c = 0; c < this.columnas; c++) {
+      const i = this.#indice(c, f);
+      if (esPunto(this.#tablero[f][c]) && !visto.has(i)) res.push(this.#grupoDesde(i, visto));
+    }
+    return res;
+  }
+
+  lineas() {
+    const res = [];
+    for (const [clave, jugador] of this.#aristas) {
+      const [i, k] = clave.split('-').map(Number);
+      res.push({ jugador, a: this.#casilla(i), b: this.#casilla(k) });
+    }
+    return res;
+  }
+
+  #recalcularPuntuacion(jugador) {
+    const { puntuacion, valor } = this.#opciones;
+    const valores = this.grupos().filter(g => g.jugador === jugador).map(g => Partida.valorGrupo(g.casillas.length, g.aristas, valor));
+    this.#puntuaciones[jugador - 1] = Partida.puntuacionDe(valores, puntuacion);
+  }
+
+  #pasarTurno() {
+    this.#jugador = this.#jugador % this.jugadores + 1;
+    this.#accion = 'marcar';
+  }
+
+  // Aplica una jugada ya validada; en las de marcar anota en la jugada las aristas formadas (para deshacerlas).
+  #aplicar(jugada) {
+    const { jugador, accion, columna, fila } = jugada;
+    const antes = this.#puntuaciones[jugador - 1];
+    const conexiones = [];
+    this.#vacias--;
+    if (accion === 'marcar') {
+      this.#tablero[fila][columna] = jugador;
+      const i = this.#indice(columna, fila);
+      for (const [dx, dy] of VECINOS) {
+        const c = columna + dx, f = fila + dy;
+        if (!this.#dentro(c, f) || this.#tablero[f][c] !== jugador) continue;
+        if (dx && dy && this.#opciones.cruces === 'prohibidos' && this.#cruzaria(columna, fila, dx, dy, jugador)) continue;
+        this.#conectar(i, this.#indice(c, f), jugador);
+        conexiones.push([c, f]);
+      }
+      jugada.aristas = conexiones.map(([c, f]) => this.#indice(c, f));
+      this.#recalcularPuntuacion(jugador);
+      if (this.bloqueadores && this.#vacias > 0) this.#accion = 'bloquear'; else this.#pasarTurno();
+    } else {
+      this.#tablero[fila][columna] = 'X';
+      this.#pasarTurno();
+    }
+    const puntuacion = this.#puntuaciones[jugador - 1];
+    return { ok: true, jugador, accion, columna, fila, conexiones, puntuacion, mejora: puntuacion > antes, terminada: this.terminada };
+  }
+
+  jugar(columna, fila) {
+    if (this.terminada) return { ok: false, motivo: 'terminada' };
+    if (!this.#dentro(columna, fila)) return { ok: false, motivo: 'fuera' };
+    if (this.#tablero[fila][columna] !== 0) return { ok: false, motivo: 'ocupada' };
+    const jugada = { jugador: this.#jugador, accion: this.#accion, columna, fila };
+    const res = this.#aplicar(jugada);
+    this.#jugadas.push(jugada);
+    this.#rehacer = [];
+    return res;
+  }
+
+  deshacer() {
+    const j = this.#jugadas.pop();
+    if (!j) return false;
+    if (j.accion === 'marcar') {
+      const i = this.#indice(j.columna, j.fila);
+      for (const k of j.aristas) this.#desconectar(i, k);
+    }
+    this.#tablero[j.fila][j.columna] = 0;
+    this.#vacias++;
+    // Antes de la jugada le tocaba a quien la hizo, con esa misma acción.
+    this.#jugador = j.jugador;
+    this.#accion = j.accion;
+    if (j.accion === 'marcar') this.#recalcularPuntuacion(j.jugador);
+    this.#rehacer.push(j);
+    return true;
+  }
+
+  rehacer() {
+    const j = this.#rehacer.pop();
+    if (!j) return false;
+    this.#aplicar(j);
+    this.#jugadas.push(j);
+    return true;
+  }
+
+  // Copia independiente y rápida (sin repetir el historial), con historial y pila de rehacer.
+  clonar() {
+    const p = new Partida(this.#opciones);
+    p.#tablero = this.#tablero.map(fila => fila.slice());
+    p.#jugador = this.#jugador;
+    p.#accion = this.#accion;
+    p.#vacias = this.#vacias;
+    p.#puntuaciones = this.#puntuaciones.slice();
+    p.#jugadas = this.#jugadas.map(j => ({ ...j, aristas: j.aristas && j.aristas.slice() }));
+    p.#rehacer = this.#rehacer.map(j => ({ ...j, aristas: j.aristas && j.aristas.slice() }));
+    p.#aristas = new Map(this.#aristas);
+    p.#adyacencia = new Map([...this.#adyacencia].map(([i, conjunto]) => [i, new Set(conjunto)]));
+    return p;
+  }
+
+  serializar() {
+    return JSON.stringify({ v: 1, opciones: this.#opciones, jugadas: this.#jugadas.map(Partida.#sinAristas), rehacer: this.#rehacer.map(Partida.#sinAristas) });
+  }
+
+  // Reconstruye la partida repitiendo el historial, lo que de paso lo valida (y vuelve a formar las aristas).
+  static deserializar(texto) {
+    const d = JSON.parse(texto);
+    if (!d || d.v !== 1 || typeof d.opciones !== 'object' || !Array.isArray(d.jugadas) || !Array.isArray(d.rehacer)) {
+      throw new Error('partida guardada no válida');
+    }
+    const p = new Partida(d.opciones);
+    const repetir = j => {
+      const r = p.jugar(j.columna, j.fila);
+      if (!r.ok || r.jugador !== j.jugador || r.accion !== j.accion) throw new Error('historial incoherente');
+    };
+    d.jugadas.forEach(repetir);
+    // La pila de rehacer se guarda con la cima al final: se repite en orden cronológico y se deshace después.
+    for (let i = d.rehacer.length - 1; i >= 0; i--) repetir(d.rehacer[i]);
+    for (let i = 0; i < d.rehacer.length; i++) p.deshacer();
+    return p;
+  }
+}
+</script>
+
+<script>
+(() => {
+'use strict';
+
+const U = 100;                // lado de la casilla en unidades del viewBox
+const RADIO = 22;             // radio del punto (diámetro ≈ 0,44 del lado)
+const LADO_MAXIMO = 120;      // píxeles por casilla, como mucho
+const RETRASO_FIN = 600;      // ms antes de tapar el tablero al acabar, para ver la última jugada
+const DEMO = [[2, 2], [7, 1], [6, 3], [3, 2], [3, 3], [5, 3], [6, 4], [4, 4], [2, 3], [7, 4], [5, 5], [1, 2], [1, 4], [6, 5], [7, 2], [0, 5], [0, 3], [8, 3], [8, 1], [1, 3]];
+const CLAVE = { partida: 'conecta-puntos.partida', opciones: 'conecta-puntos.opciones', tema: 'conecta-puntos.tema', sonido: 'conecta-puntos.sonido' };
+const LIMITES = { jugadores: [2, 4], columnas: [4, 16], filas: [4, 16] };
+const OPCIONES_DEFECTO = { jugadores: 2, columnas: 10, filas: 7, bloqueadores: true, cruces: 'permitidos', puntuacion: 'mayor', valor: 'n' };
+const REGLAS_UI = { cruces: ['permitidos', 'prohibidos'], puntuacion: ['mayor', 'suma'], valor: ['n', 'm', 'n+m', 'tn', 'tm', 'tn+tm'] };
+const NOMBRE_VALOR = { 'n': 'n', 'm': 'm', 'n+m': 'n + m', 'tn': 'n(n+1)/2', 'tm': 'm(m+1)/2', 'tn+tm': 'n(n+1)/2 + m(m+1)/2' };
+const FONDO = { light: '#f9f9f7', dark: '#0d0d0d' };   // para <meta name="theme-color">
+
+const demo = new URLSearchParams(location.search).get('demo');   // null si no hay ?demo=
+const movimientoReducido = matchMedia('(prefers-reduced-motion: reduce)');
+const animar = () => !movimientoReducido.matches;
+const $ = id => document.getElementById(id);
+const el = {
+  svg: $('svg'), zona: $('zona'), tablero: $('tablero'), marcador: $('marcador'),
+  estado: $('estado'), estadoPieza: $('estado-pieza'), estadoTexto: $('estado-texto'), estadoVariante: $('estado-variante'), verResultado: $('ver-resultado'), variantes: $('variantes'),
+  aviso: $('aviso'), fin: $('fin'), finResultado: $('fin-resultado'), finPuntos: $('fin-puntos'),
+  deshacer: $('deshacer'), rehacer: $('rehacer'), sonido: $('sonido'), tema: $('tema'),
+  dialogoNueva: $('dialogo-nueva'), formNueva: $('form-nueva'), dialogoConfirmar: $('dialogo-confirmar'), dialogoAyuda: $('dialogo-ayuda'),
+};
+
+let partida;                   // la Partida en curso
+let opciones;                  // últimas opciones elegidas en «Nueva partida»
+let capas;                     // grupos del SVG que se repintan en cada jugada
+let finOculto = false;         // el usuario ha cerrado el panel de fin con «Ver tablero»
+let temporizadorFin = 0;       // distinto de 0 mientras el panel de fin espera su turno
+let hover = null;              // casilla bajo el ratón, [columna, fila] o null
+let cursor = null;             // casilla del cursor de teclado, [columna, fila] o null
+let puntuacionesVistas = [];   // para animar la cifra que sube
+let ignorarTableroHasta = 0;   // tras cerrar un diálogo o el panel de fin, el segundo clic de un doble clic no debe jugar
+
+// ---------- almacenamiento (siempre protegido; en modo demo no se guarda nada) ----------
+function leer(clave) {
+  try { return localStorage.getItem(clave); } catch { return null; }
+}
+function guardar(clave, valor) {
+  if (demo !== null) return;
+  try {
+    if (valor === null) localStorage.removeItem(clave); else localStorage.setItem(clave, valor);
+  } catch { /* sin almacenamiento: la página sigue funcionando */ }
+}
+function acotar(valor, minimo, maximo) { return Math.min(maximo, Math.max(minimo, valor)); }
+function normalizarOpciones(o) {
+  const entero = (v, [minimo, maximo], defecto) => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? acotar(n, minimo, maximo) : defecto;
+  };
+  return {
+    jugadores: entero(o.jugadores, LIMITES.jugadores, OPCIONES_DEFECTO.jugadores),
+    columnas: entero(o.columnas, LIMITES.columnas, OPCIONES_DEFECTO.columnas),
+    filas: entero(o.filas, LIMITES.filas, OPCIONES_DEFECTO.filas),
+    bloqueadores: Boolean(o.bloqueadores),
+    cruces: REGLAS_UI.cruces.includes(o.cruces) ? o.cruces : OPCIONES_DEFECTO.cruces,
+    puntuacion: REGLAS_UI.puntuacion.includes(o.puntuacion) ? o.puntuacion : OPCIONES_DEFECTO.puntuacion,
+    valor: REGLAS_UI.valor.includes(o.valor) ? o.valor : OPCIONES_DEFECTO.valor,
+  };
+}
+// Texto corto de las reglas que se apartan de las de siempre ('' si son las de siempre).
+function descripcionReglas({ cruces, puntuacion, valor }) {
+  const partes = [];
+  if (cruces === 'prohibidos') partes.push('sin cruces');
+  if (puntuacion === 'suma') partes.push('suma de grupos');
+  if (valor !== 'n') partes.push(`valor ${NOMBRE_VALOR[valor]}`);
+  return partes.join(' · ');
+}
+function leerOpciones() {
+  let guardadas = null;
+  try { guardadas = JSON.parse(leer(CLAVE.opciones)); } catch { /* sin opciones guardadas */ }
+  return normalizarOpciones({ ...OPCIONES_DEFECTO, ...(guardadas || {}) });
+}
+
+// ---------- sonidos sintetizados con Web Audio ----------
+const sonido = {
+  activo: leer(CLAVE.sonido) !== 'no',
+  ctx: null,
+  // Un tono breve que baja (o sube) de `inicio` a `fin` con envolvente exponencial.
+  tono({ inicio, fin = inicio, duracion, tipo = 'sine', volumen = 0.2, retraso = 0 }) {
+    if (!this.activo) return;
+    try {
+      if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (this.ctx.state !== 'running') reanudarAudio();   // iOS usa además el estado 'interrupted'
+      const ctx = this.ctx, t = ctx.currentTime + retraso;
+      const osc = ctx.createOscillator(), ganancia = ctx.createGain();
+      osc.type = tipo;
+      osc.frequency.setValueAtTime(inicio, t);
+      osc.frequency.exponentialRampToValueAtTime(fin, t + duracion);
+      ganancia.gain.setValueAtTime(volumen, t);
+      ganancia.gain.exponentialRampToValueAtTime(0.001, t + duracion);
+      osc.connect(ganancia);
+      ganancia.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + duracion + 0.02);
+    } catch { /* sin audio: el juego sigue en silencio */ }
+  },
+  pop() { this.tono({ inicio: 700, fin: 350, duracion: 0.09 }); },
+  popGrave() { this.tono({ inicio: 320, fin: 140, duracion: 0.12, tipo: 'triangle', volumen: 0.25 }); },
+  wobble() {
+    this.tono({ inicio: 180, fin: 120, duracion: 0.12, tipo: 'sawtooth', volumen: 0.08 });
+    this.tono({ inicio: 120, fin: 180, duracion: 0.12, tipo: 'sawtooth', volumen: 0.08, retraso: 0.12 });
+  },
+  logro() {
+    this.tono({ inicio: 660, duracion: 0.12, volumen: 0.15, retraso: 0.1 });
+    this.tono({ inicio: 990, duracion: 0.2, volumen: 0.15, retraso: 0.22 });
+  },
+};
+function reanudarAudio() {
+  try { const r = sonido.ctx.resume(); if (r && r.catch) r.catch(() => {}); } catch { /* sin audio */ }
+}
+// Al volver a la pestaña (o tras una llamada en iOS) el contexto puede haberse quedado parado.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && sonido.ctx && sonido.ctx.state !== 'running') reanudarAudio();
+});
+function pintarSonido() {
+  el.sonido.setAttribute('aria-pressed', String(sonido.activo));
+  el.sonido.title = sonido.activo ? 'Silenciar' : 'Activar sonido';
+  el.sonido.querySelector('use').setAttribute('href', sonido.activo ? '#i-sonido' : '#i-silencio');
+}
+el.sonido.addEventListener('click', () => {
+  sonido.activo = !sonido.activo;
+  guardar(CLAVE.sonido, sonido.activo ? 'si' : 'no');
+  pintarSonido();
+  if (sonido.activo) sonido.pop();
+});
+
+// ---------- tema: auto → claro → oscuro → auto ----------
+const NOMBRE_TEMA = { auto: 'automático', light: 'claro', dark: 'oscuro' };
+const metasColor = document.querySelectorAll('meta[name="theme-color"]');
+let tema = document.documentElement.dataset.theme || 'auto';
+function pintarTema() {
+  if (tema === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = tema;
+  for (const meta of metasColor) meta.content = FONDO[tema] || FONDO[meta.media.includes('dark') ? 'dark' : 'light'];
+  el.tema.setAttribute('aria-label', `Tema ${NOMBRE_TEMA[tema]}. Cambiar tema`);
+  el.tema.title = `Tema: ${NOMBRE_TEMA[tema]}`;
+  el.tema.querySelector('use').setAttribute('href', `#i-tema-${tema === 'auto' ? 'auto' : tema === 'light' ? 'claro' : 'oscuro'}`);
+}
+el.tema.addEventListener('click', () => {
+  tema = { auto: 'light', light: 'dark', dark: 'auto' }[tema];
+  pintarTema();
+  guardar(CLAVE.tema, tema === 'auto' ? null : tema);
+});
+
+// ---------- tablero ----------
+const claseJugador = j => `j${(j - 1) % 4 + 1}`;
+const centro = (c, f) => [(c + 0.5) * U, (f + 0.5) * U];
+const mismaCasilla = (a, b) => a === b || Boolean(a && b && a[0] === b[0] && a[1] === b[1]);
+
+// Construye las capas fijas del SVG (fondo y rejilla) para la partida actual.
+function montarTablero() {
+  const { columnas: C, filas: F } = partida;
+  const ancho = C * U, alto = F * U;
+  el.svg.setAttribute('viewBox', `0 0 ${ancho} ${alto}`);
+  el.svg.setAttribute('aria-label', `Tablero de ${C} columnas por ${F} filas`);
+  let rejilla = '';
+  for (let c = 1; c < C; c++) rejilla += `M${c * U} 0V${alto}`;
+  for (let f = 1; f < F; f++) rejilla += `M0 ${f * U}H${ancho}`;
+  el.svg.innerHTML =
+    `<rect class="fondo" width="${ancho}" height="${alto}"/>` +
+    `<g id="capa-bloqueadores"></g>` +
+    `<path class="rejilla" d="${rejilla}" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>` +
+    `<g id="capa-lineas"></g><g id="capa-puntos"></g>` +
+    `<g id="capa-sombra" class="sombra"></g>` +
+    `<rect id="cursor" class="cursor" width="${U}" height="${U}" rx="8"/>`;
+  capas = { bloqueadores: $('capa-bloqueadores'), lineas: $('capa-lineas'), puntos: $('capa-puntos'), sombra: $('capa-sombra'), cursor: $('cursor') };
+}
+
+// El tablero mide un número entero de píxeles por casilla (rejilla nítida), el mayor que cabe en la zona
+// y nunca más alto que la ventana.
+function ajustarTamano() {
+  const ancho = el.zona.clientWidth, alto = Math.min(el.zona.clientHeight, document.documentElement.clientHeight - 20);
+  if (ancho <= 0 || alto <= 0) return;
+  const lado = acotar(Math.floor(Math.min(ancho / partida.columnas, alto / partida.filas)), 8, LADO_MAXIMO);
+  el.tablero.style.width = `${lado * partida.columnas}px`;
+  el.tablero.style.height = `${lado * partida.filas}px`;
+}
+
+// Pinta bloqueadores, líneas y puntos; `nueva` ([c, f]) es la casilla recién jugada, que aparece animada.
+function pintarPiezas(nueva) {
+  const t = partida.tablero, conAnimacion = Boolean(nueva) && animar();
+  const esNueva = (c, f) => conAnimacion && c === nueva[0] && f === nueva[1];
+  let bloqueadores = '', puntos = '';
+  for (let f = 0; f < partida.filas; f++) for (let c = 0; c < partida.columnas; c++) {
+    const v = t[f][c];
+    if (v === 0) continue;
+    const animacion = esNueva(c, f) ? ' aparece' : '', datos = `data-c="${c}" data-f="${f}"`;
+    if (v === 'X') {
+      bloqueadores += `<rect class="bloqueador${animacion}" ${datos} x="${c * U}" y="${f * U}" width="${U}" height="${U}"/>`;
+    } else {
+      const [x, y] = centro(c, f);
+      puntos += `<circle class="punto ${claseJugador(v)}${animacion}" ${datos} cx="${x}" cy="${y}" r="${RADIO}"/>`;
+    }
+  }
+  // Cada línea lleva debajo un trazo del color del borde, como los puntos: así contrasta con el tablero en los dos temas.
+  // Primero todos los bordes y luego todos los colores, para que una línea no pinte su borde sobre otra.
+  let bordes = '', lineas = '';
+  for (const l of partida.lineas()) {
+    // Las líneas nuevas se trazan desde el punto recién puesto hacia sus vecinos.
+    const [a, b] = esNueva(...l.b) ? [l.b, l.a] : [l.a, l.b];
+    const [x1, y1] = centro(...a), [x2, y2] = centro(...b);
+    const traza = esNueva(...a);
+    const estilo = traza ? ` style="--largo:${Math.ceil(Math.hypot(x2 - x1, y2 - y1)) + 1}"` : '';
+    const clases = `${claseJugador(l.jugador)}${traza ? ' traza' : ''}`, coordenadas = `x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"`;
+    bordes += `<line class="linea-borde ${clases}"${estilo} ${coordenadas}/>`;
+    lineas += `<line class="linea ${clases}"${estilo} ${coordenadas}/>`;
+  }
+  capas.bloqueadores.innerHTML = bloqueadores;
+  capas.lineas.innerHTML = bordes + lineas;
+  capas.puntos.innerHTML = puntos;
+}
+
+// Con ratón o lápiz, muestra en tenue lo que se va a poner en la casilla vacía bajo el puntero.
+function pintarSombra() {
+  let html = '';
+  if (hover && !partida.terminada && partida.tablero[hover[1]][hover[0]] === 0) {
+    const [c, f] = hover;
+    if (partida.accion === 'marcar') {
+      const [x, y] = centro(c, f);
+      html = `<circle class="punto ${claseJugador(partida.jugador)}" cx="${x}" cy="${y}" r="${RADIO}"/>`;
+    } else {
+      html = `<rect class="bloqueador" x="${c * U}" y="${f * U}" width="${U}" height="${U}"/>`;
+    }
+  }
+  capas.sombra.innerHTML = html;
+}
+
+function pintarMarcador() {
+  const p = partida.puntuaciones, conAnimacion = animar();
+  el.marcador.innerHTML = p.map((n, i) => {
+    const j = i + 1;
+    const activa = !partida.terminada && j === partida.jugador;
+    const ganadora = partida.terminada && partida.ganadores.includes(j);
+    const sube = conAnimacion && n > puntuacionesVistas[i];
+    return `<li class="ficha ${claseJugador(j)}${activa ? ' activa' : ''}${ganadora ? ' ganadora' : ''}"${activa ? ' aria-current="true"' : ''}>` +
+      `<span class="bolita" aria-hidden="true"></span><span class="nombre">Jugador ${j}</span><span class="cifra${sube ? ' sube' : ''}">${n}</span></li>`;
+  }).join('');
+  puntuacionesVistas = p;
+}
+
+const puntosTexto = n => `${n} ${n === 1 ? 'punto' : 'puntos'}`;
+const enumerar = lista => (lista.length === 2 ? `${lista[0]} y ${lista[1]}` : `${lista.slice(0, -1).join(', ')} y ${lista[lista.length - 1]}`);
+function textoResultado() {
+  const g = partida.ganadores, maximo = partida.puntuaciones[g[0] - 1];
+  if (g.length === 1) return `Gana el jugador ${g[0]} con ${puntosTexto(maximo)}`;
+  return `Empate a ${puntosTexto(maximo)}` + (g.length < partida.jugadores ? ` entre los jugadores ${enumerar(g)}` : '');
+}
+
+function pintarEstado() {
+  let clase = 'neutro', pieza = '', texto;
+  if (partida.terminada) {
+    const g = partida.ganadores;
+    texto = textoResultado();
+    if (g.length === 1) { clase = claseJugador(g[0]); pieza = 'punto-mini'; }
+  } else {
+    const marcar = partida.accion === 'marcar';
+    clase = claseJugador(partida.jugador);
+    pieza = marcar ? 'punto-mini' : 'bloqueador-mini';
+    texto = `Jugador ${partida.jugador}: ${marcar ? 'pon tu punto' : 'pon un bloqueador'}`;
+  }
+  el.estado.className = `estado ${clase}`;
+  el.estadoPieza.className = `pieza-mini ${pieza}`;
+  el.estadoPieza.hidden = !pieza;
+  if (el.estadoTexto.textContent !== texto) el.estadoTexto.textContent = texto;
+  const variante = descripcionReglas(partida.reglas);
+  el.estadoVariante.textContent = variante;
+  el.estadoVariante.hidden = !variante;
+}
+
+function pintarFin() {
+  const mostrar = partida.terminada && !finOculto && !temporizadorFin;
+  el.fin.hidden = !mostrar;
+  el.verResultado.hidden = !(partida.terminada && finOculto);
+  if (!mostrar) return;
+  el.finResultado.textContent = textoResultado();
+  el.finPuntos.innerHTML = partida.puntuaciones.map((n, i) => {
+    const j = i + 1;
+    return `<li class="${claseJugador(j)}${partida.ganadores.includes(j) ? ' ganador' : ''}"><span class="bolita" aria-hidden="true"></span>Jugador ${j}: <strong>${puntosTexto(n)}</strong></li>`;
+  }).join('');
+}
+
+// Repinta todo lo que depende del estado de la partida y la guarda.
+function pintar(nueva) {
+  pintarPiezas(nueva);
+  pintarSombra();
+  pintarMarcador();
+  pintarEstado();
+  pintarFin();
+  el.tablero.classList.toggle('terminada', partida.terminada);
+  el.deshacer.disabled = !partida.puedeDeshacer;
+  el.rehacer.disabled = !partida.puedeRehacer;
+  guardar(CLAVE.partida, partida.serializar());
+}
+
+function cancelarFin() {
+  clearTimeout(temporizadorFin);
+  temporizadorFin = 0;
+}
+// Deja ver la última jugada antes de tapar el tablero con el panel de fin.
+function programarFin() {
+  cancelarFin();
+  temporizadorFin = setTimeout(() => {
+    temporizadorFin = 0;
+    pintarFin();
+    if (!el.fin.hidden) $('titulo-fin').focus({ preventScroll: true });   // el teclado y el lector de pantalla siguen al panel
+  }, animar() ? RETRASO_FIN : 0);
+}
+
+function establecer(nueva) {
+  partida = nueva;
+  cancelarFin();
+  ocultarAviso();
+  finOculto = false;
+  hover = null;
+  cursor = null;
+  puntuacionesVistas = partida.puntuaciones;
+  montarTablero();
+  pintar();
+  ajustarTamano();   // con marcador y estado ya pintados, la medida de la zona es la buena
+}
+
+// ---------- avisos ----------
+let temporizadorAviso = 0, temporizadorAvisoTexto = 0;
+function ocultarAviso() {
+  clearTimeout(temporizadorAviso);
+  clearTimeout(temporizadorAvisoTexto);
+  temporizadorAviso = 0;
+  el.aviso.classList.remove('visible');
+  // Tras el fundido se vacía el texto: no queda para los lectores de pantalla y el siguiente aviso se anuncia aunque repita.
+  temporizadorAvisoTexto = setTimeout(() => { el.aviso.textContent = ''; }, 250);
+}
+function avisar(texto) {
+  ocultarAviso();
+  clearTimeout(temporizadorAvisoTexto);
+  el.aviso.textContent = texto;
+  el.aviso.classList.add('visible');
+  temporizadorAviso = setTimeout(ocultarAviso, 2000);
+}
+
+function sacudir(c, f) {
+  const pieza = el.svg.querySelector(`[data-c="${c}"][data-f="${f}"]`);
+  if (!pieza || !animar()) return;
+  pieza.classList.remove('sacudida', 'aparece');   // si aún estaba apareciendo, que no vuelva a empezar tras la sacudida
+  void pieza.getBoundingClientRect();   // fuerza el reflujo para que la animación vuelva a empezar
+  pieza.classList.add('sacudida');
+  pieza.addEventListener('animationend', () => pieza.classList.remove('sacudida'), { once: true });
+}
+
+// ---------- jugadas ----------
+function casillaEn(evento) {
+  const matriz = el.svg.getScreenCTM();
+  if (!matriz) return null;
+  const p = new DOMPoint(evento.clientX, evento.clientY).matrixTransform(matriz.inverse());
+  const c = Math.floor(p.x / U), f = Math.floor(p.y / U);
+  return c >= 0 && f >= 0 && c < partida.columnas && f < partida.filas ? [c, f] : null;
+}
+
+function jugar(c, f) {
+  const r = partida.jugar(c, f);
+  if (!r.ok) {
+    if (r.motivo === 'ocupada') { sonido.wobble(); sacudir(c, f); }
+    return;   // con la partida terminada, tocar el tablero no hace nada
+  }
+  finOculto = false;
+  if (r.terminada) programarFin();
+  pintar([c, f]);
+  if (r.accion === 'bloquear') {
+    sonido.popGrave();
+  } else {
+    sonido.pop();
+    // Como en Scratch, se celebra cuando una jugada conecta puntos y sube la puntuación; un punto suelto, no.
+    if (r.mejora && r.conexiones.length > 0) {
+      sonido.logro();
+      avisar(`¡El jugador ${r.jugador} ya tiene ${puntosTexto(r.puntuacion)}!`);
+    }
+  }
+}
+
+function deshacer() {
+  if (!partida.deshacer()) return;
+  cancelarFin();
+  ocultarAviso();   // lo que anunciaba ya no es cierto
+  finOculto = false;
+  pintar();
+}
+function rehacer() {
+  if (!partida.rehacer()) return;
+  ocultarAviso();
+  finOculto = false;
+  if (partida.terminada) programarFin();
+  const j = partida.jugadas[partida.jugadas.length - 1];
+  pintar([j.columna, j.fila]);
+}
+
+// Solo `click`: un toque genera un único click, así no hay doble disparo touch + click.
+el.svg.addEventListener('click', evento => {
+  if (performance.now() < ignorarTableroHasta) return;   // segundo clic de un doble clic sobre un botón que acaba de desaparecer
+  const casilla = casillaEn(evento);
+  if (casilla) jugar(casilla[0], casilla[1]);
+});
+el.svg.addEventListener('pointermove', evento => {
+  if (evento.pointerType === 'touch') return;   // con dedo no hay hover
+  const casilla = casillaEn(evento);
+  if (mismaCasilla(casilla, hover)) return;
+  hover = casilla;
+  pintarSombra();
+});
+el.svg.addEventListener('pointerdown', evento => {
+  ocultarCursor();
+  // En un portátil táctil el ratón puede quedarse sobre el tablero: el fantasma no debe seguir ahí tras tocar.
+  if (evento.pointerType === 'touch' && hover) { hover = null; pintarSombra(); }
+});
+el.svg.addEventListener('pointerleave', () => {
+  if (!hover) return;
+  hover = null;
+  pintarSombra();
+});
+
+// Teclado: flechas para mover el cursor por el tablero, Enter o espacio para jugar.
+function moverCursor(dc, df) {
+  cursor = cursor ? [acotar(cursor[0] + dc, 0, partida.columnas - 1), acotar(cursor[1] + df, 0, partida.filas - 1)] : [0, 0];
+  capas.cursor.setAttribute('x', cursor[0] * U);
+  capas.cursor.setAttribute('y', cursor[1] * U);
+  capas.cursor.classList.add('visible');
+}
+function ocultarCursor() {
+  if (!cursor) return;
+  cursor = null;
+  capas.cursor.classList.remove('visible');
+}
+const FLECHAS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+el.svg.addEventListener('keydown', evento => {
+  if (FLECHAS[evento.key]) {
+    evento.preventDefault();
+    moverCursor(...FLECHAS[evento.key]);
+  } else if ((evento.key === 'Enter' || evento.key === ' ') && cursor) {
+    evento.preventDefault();
+    jugar(cursor[0], cursor[1]);
+  }
+});
+el.svg.addEventListener('blur', ocultarCursor);
+document.addEventListener('keydown', evento => {
+  if (!(evento.ctrlKey || evento.metaKey) || evento.altKey || evento.key.toLowerCase() !== 'z') return;
+  if (document.querySelector('dialog[open]')) return;
+  evento.preventDefault();
+  if (evento.shiftKey) rehacer(); else deshacer();
+});
+
+el.deshacer.addEventListener('click', deshacer);
+el.rehacer.addEventListener('click', rehacer);
+$('ver-tablero').addEventListener('click', () => {
+  finOculto = true;
+  ignorarTableroHasta = performance.now() + 350;
+  pintarFin();
+  el.verResultado.focus();
+});
+el.verResultado.addEventListener('click', () => {
+  finOculto = false;
+  pintarFin();
+  $('titulo-fin').focus({ preventScroll: true });
+});
+
+// ---------- nueva partida ----------
+function abrirNueva() {
+  const campos = el.formNueva.elements;
+  campos.jugadores.value = String(opciones.jugadores);
+  campos.columnas.value = opciones.columnas;
+  campos.filas.value = opciones.filas;
+  campos.bloqueadores.value = opciones.bloqueadores ? 'si' : 'no';
+  campos.cruces.value = opciones.cruces;
+  campos.puntuacion.value = opciones.puntuacion;
+  campos.valor.value = opciones.valor;
+  el.variantes.open = Boolean(descripcionReglas(opciones));   // abierto solo si hay alguna variante activa
+  el.dialogoNueva.showModal();
+}
+// Con una partida a medias se pide confirmación antes de descartarla.
+function pedirNuevaPartida() {
+  if ((partida.puedeDeshacer || partida.puedeRehacer) && !partida.terminada) el.dialogoConfirmar.showModal(); else abrirNueva();
+}
+$('nueva').addEventListener('click', pedirNuevaPartida);
+$('fin-nueva').addEventListener('click', abrirNueva);
+$('seguir-jugando').addEventListener('click', () => el.dialogoConfirmar.close());
+$('descartar').addEventListener('click', () => { el.dialogoConfirmar.close(); abrirNueva(); });
+$('cancelar').addEventListener('click', () => el.dialogoNueva.close());
+for (const boton of document.querySelectorAll('[data-paso]')) {
+  boton.addEventListener('click', () => {
+    const campo = $(boton.dataset.campo);
+    const minimo = Number(campo.min), maximo = Number(campo.max);
+    campo.value = acotar((Number(campo.value) || minimo) + Number(boton.dataset.paso), minimo, maximo);
+  });
+}
+el.formNueva.addEventListener('submit', evento => {
+  evento.preventDefault();
+  const campos = el.formNueva.elements;
+  opciones = normalizarOpciones({
+    jugadores: campos.jugadores.value,
+    columnas: campos.columnas.value,
+    filas: campos.filas.value,
+    bloqueadores: campos.bloqueadores.value !== 'no',
+    cruces: campos.cruces.value,
+    puntuacion: campos.puntuacion.value,
+    valor: campos.valor.value,
+  });
+  guardar(CLAVE.opciones, JSON.stringify(opciones));
+  el.dialogoNueva.close();
+  establecer(new Partida(opciones));
+});
+
+// ---------- ayuda y cierre de diálogos ----------
+$('ayuda').addEventListener('click', () => {
+  el.dialogoAyuda.showModal();
+  // El foco va al título (y no al botón del final) para que el cuadro se vea desde el principio.
+  el.dialogoAyuda.querySelector('.dialogo-contenido').scrollTop = 0;
+  $('titulo-ayuda').focus({ preventScroll: true });
+});
+$('cerrar-ayuda').addEventListener('click', () => el.dialogoAyuda.close());
+// Pulsar el fondo oscurecido (fuera del cuadro) cierra el diálogo.
+for (const dialogo of document.querySelectorAll('dialog')) {
+  dialogo.addEventListener('close', () => { ignorarTableroHasta = performance.now() + 350; });
+  dialogo.addEventListener('click', evento => {
+    if (evento.target !== dialogo) return;
+    const r = dialogo.getBoundingClientRect();
+    if (evento.clientX < r.left || evento.clientX > r.right || evento.clientY < r.top || evento.clientY > r.bottom) dialogo.close();
+  });
+}
+
+// ---------- arranque ----------
+pintarSonido();
+pintarTema();
+{
+  const mac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+  el.deshacer.title = mac ? 'Deshacer (⌘Z)' : 'Deshacer (Ctrl+Z)';
+  el.rehacer.title = mac ? 'Rehacer (⇧⌘Z)' : 'Rehacer (Ctrl+Mayús+Z)';
+}
+opciones = leerOpciones();
+if (demo !== null) {
+  // Partida de demostración (capturas y pruebas): ignora lo guardado y no guarda nada.
+  const p = new Partida();
+  for (const [c, f] of DEMO) p.jugar(c, f);
+  if (demo === 'fin') {
+    for (let f = 0; f < p.filas; f++) for (let c = 0; c < p.columnas; c++) if (p.tablero[f][c] === 0) p.jugar(c, f);
+  }
+  establecer(p);
+} else {
+  let guardada = null;
+  const texto = leer(CLAVE.partida);
+  if (texto) {
+    try { guardada = Partida.deserializar(texto); } catch { /* partida guardada corrupta: se empieza otra */ }
+  }
+  establecer(guardada || new Partida(opciones));
+}
+// El tablero se vuelve a medir al cambiar el tamaño de la ventana, girar el móvil o cambiar de alto el marcador.
+if ('ResizeObserver' in window) new ResizeObserver(ajustarTamano).observe(el.zona);
+else window.addEventListener('resize', ajustarTamano);
+})();
+</script>
+</body>
+</html>
