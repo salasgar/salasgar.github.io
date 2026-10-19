@@ -250,6 +250,8 @@ body {
 }
 .ficha .maquina-etiqueta { font-size: 12px; font-weight: 500; color: var(--texto-suave); }
 .ficha.ganadora { border-color: var(--color); }
+.ficha.rendida { opacity: .55; }
+.ficha.rendida .nombre { text-decoration: line-through; }
 .ficha.ganadora .cifra { color: var(--color-texto); }
 .cifra.sube { animation: subir .45s ease-out; }
 @keyframes subir { 40% { transform: scale(1.35); } }
@@ -584,6 +586,7 @@ select {
   <symbol id="i-nueva" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-deshacer" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
   <symbol id="i-rehacer" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
+  <symbol id="i-rendirse" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h13l-3 4.5 3 4.5H5"/></symbol>
   <symbol id="i-sonido" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></symbol>
   <symbol id="i-silencio" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m23 9-6 6M17 9l6 6"/></symbol>
   <symbol id="i-ayuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
@@ -643,6 +646,7 @@ select {
     <button type="button" class="boton" id="nueva" aria-label="Nueva partida" title="Nueva partida"><svg class="icono" aria-hidden="true"><use href="#i-nueva"/></svg><span class="etiqueta">Nueva partida</span></button>
     <button type="button" class="boton" id="deshacer" aria-label="Deshacer" title="Deshacer (Ctrl+Z)"><svg class="icono" aria-hidden="true"><use href="#i-deshacer"/></svg><span class="etiqueta">Deshacer</span></button>
     <button type="button" class="boton" id="rehacer" aria-label="Rehacer" title="Rehacer (Ctrl+Mayús+Z)"><svg class="icono" aria-hidden="true"><use href="#i-rehacer"/></svg><span class="etiqueta">Rehacer</span></button>
+    <button type="button" class="boton" id="rendirse" aria-label="Rendirse" title="Rendirse"><svg class="icono" aria-hidden="true"><use href="#i-rendirse"/></svg><span class="etiqueta">Rendirse</span></button>
   </div>
 </div>
 
@@ -797,6 +801,17 @@ select {
   </div>
 </dialog>
 
+<dialog id="dialogo-rendirse" aria-labelledby="titulo-rendirse">
+  <div class="dialogo-contenido">
+    <h2 id="titulo-rendirse">¿Rendirse?</h2>
+    <p id="texto-rendirse"></p>
+    <div class="dialogo-botones">
+      <button type="button" class="boton" id="confirmar-rendirse">Rendirse</button>
+      <button type="button" class="boton principal" id="no-rendirse" autofocus>Seguir jugando</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="dialogo-ayuda" aria-labelledby="titulo-ayuda">
   <div class="dialogo-contenido">
     <h2 id="titulo-ayuda" tabindex="-1">Cómo se juega</h2>
@@ -810,6 +825,7 @@ select {
     <p>Variante «sin bloqueadores»: cada turno es solo poner un punto.</p>
     <p>Más variantes, en «Nueva partida» → «Variantes del juego»: si una línea puede cruzar a otra de distinto color; si cuenta solo el grupo mayor o la suma de todos los grupos; y cuánto vale un grupo de n puntos y m conexiones (n, m, n + m, n(n+1)/2, m(m+1)/2 o la suma de las dos últimas).</p>
     <p>También puedes jugar contra la máquina: en «Nueva partida» elige «Máquina» para el jugador que quieras y su nivel (fácil, medio o difícil).</p>
+    <p>Si no quieres seguir, pulsa «Rendirse» en tu turno: quedas fuera (tus puntos se quedan en el tablero, pero ya no puedes ganar) y los demás continúan; si solo queda un jugador, gana. Puedes deshacerlo.</p>
     <p>Con teclado: flechas para moverte por el tablero, Enter o espacio para poner la pieza, y Ctrl+Z (⌘Z en Mac) para deshacer.</p>
     <p>Juego original en Scratch: <a href="https://scratch.mit.edu/projects/423281174/" target="_blank" rel="noopener">https://scratch.mit.edu/projects/423281174/</a></p>
     <div class="dialogo-botones">
@@ -845,6 +861,7 @@ const triangular = k => k * (k + 1) / 2;
 
 class Partida {
   #opciones; #tablero; #jugador; #accion; #vacias; #puntuaciones; #jugadas; #rehacer;
+  #fuera;        // Set de los jugadores que se han rendido: ya no juegan, y sus puntos se quedan en el tablero pero no pueden ganar
   #aristas;      // Map clave → jugador; clave = «índice menor-índice mayor», con índice = fila * columnas + columna
   #adyacencia;   // Map índice → Set de índices conectados por una arista
 
@@ -862,6 +879,7 @@ class Partida {
     this.#puntuaciones = new Array(jugadores).fill(0);
     this.#jugadas = [];
     this.#rehacer = [];
+    this.#fuera = new Set();
     this.#aristas = new Map();
     this.#adyacencia = new Map();
   }
@@ -894,15 +912,20 @@ class Partida {
   get accion() { return this.#accion; }
   get puntuaciones() { return this.#puntuaciones.slice(); }
   get vacias() { return this.#vacias; }
-  get terminada() { return this.#vacias === 0; }
+  // Termina al llenarse el tablero o cuando solo queda un jugador sin rendirse.
+  get terminada() { return this.#vacias === 0 || this.#fuera.size >= this.jugadores - 1; }
+  get rendidos() { return [...this.#fuera].sort((a, b) => a - b); }
+  // Gana quien más puntos tiene entre los que no se han rendido (el último que queda gana sin más).
   get ganadores() {
     if (!this.terminada) return [];
-    const maximo = Math.max(...this.#puntuaciones);
-    return this.#puntuaciones.flatMap((p, i) => (p === maximo ? [i + 1] : []));
+    const quedan = this.#puntuaciones.flatMap((p, i) => (this.#fuera.has(i + 1) ? [] : [{ j: i + 1, p }]));
+    const maximo = Math.max(...quedan.map(q => q.p));
+    return quedan.filter(q => q.p === maximo).map(q => q.j);
   }
   get jugadas() { return this.#jugadas.map(Partida.#sinAristas); }
   get puedeDeshacer() { return this.#jugadas.length > 0; }
   get puedeRehacer() { return this.#rehacer.length > 0; }
+  get puedeRendirse() { return !this.terminada; }
 
   static #sinAristas({ jugador, accion, columna, fila }) { return { jugador, accion, columna, fila }; }
   #dentro(columna, fila) {
@@ -980,13 +1003,19 @@ class Partida {
   }
 
   #pasarTurno() {
-    this.#jugador = this.#jugador % this.jugadores + 1;
+    do { this.#jugador = this.#jugador % this.jugadores + 1; } while (this.#fuera.has(this.#jugador));
     this.#accion = 'marcar';
   }
 
   // Aplica una jugada ya validada; en las de marcar anota en la jugada las aristas formadas (para deshacerlas).
   #aplicar(jugada) {
     const { jugador, accion, columna, fila } = jugada;
+    if (accion === 'rendirse') {
+      jugada.accionPrevia = this.#accion;
+      this.#fuera.add(jugador);
+      if (!this.terminada) this.#pasarTurno();
+      return { ok: true, jugador, accion, columna: null, fila: null, conexiones: [], puntuacion: this.#puntuaciones[jugador - 1], mejora: false, terminada: this.terminada };
+    }
     const antes = this.#puntuaciones[jugador - 1];
     const conexiones = [];
     this.#vacias--;
@@ -1022,9 +1051,26 @@ class Partida {
     return res;
   }
 
+  // El jugador al que le toca se rinde: queda fuera y el turno pasa al siguiente (a mitad de turno, sin bloquear).
+  rendirse() {
+    if (this.terminada) return { ok: false, motivo: 'terminada' };
+    const jugada = { jugador: this.#jugador, accion: 'rendirse' };
+    const res = this.#aplicar(jugada);
+    this.#jugadas.push(jugada);
+    this.#rehacer = [];
+    return res;
+  }
+
   deshacer() {
     const j = this.#jugadas.pop();
     if (!j) return false;
+    if (j.accion === 'rendirse') {
+      this.#fuera.delete(j.jugador);
+      this.#jugador = j.jugador;
+      this.#accion = j.accionPrevia;
+      this.#rehacer.push(j);
+      return true;
+    }
     if (j.accion === 'marcar') {
       const i = this.#indice(j.columna, j.fila);
       for (const k of j.aristas) this.#desconectar(i, k);
@@ -1055,6 +1101,7 @@ class Partida {
     p.#accion = this.#accion;
     p.#vacias = this.#vacias;
     p.#puntuaciones = this.#puntuaciones.slice();
+    p.#fuera = new Set(this.#fuera);
     p.#jugadas = this.#jugadas.map(j => ({ ...j, aristas: j.aristas && j.aristas.slice() }));
     p.#rehacer = this.#rehacer.map(j => ({ ...j, aristas: j.aristas && j.aristas.slice() }));
     p.#aristas = new Map(this.#aristas);
@@ -1074,7 +1121,7 @@ class Partida {
     }
     const p = new Partida(d.opciones);
     const repetir = j => {
-      const r = p.jugar(j.columna, j.fila);
+      const r = j.accion === 'rendirse' ? p.rendirse() : p.jugar(j.columna, j.fila);
       if (!r.ok || r.jugador !== j.jugador || r.accion !== j.accion) throw new Error('historial incoherente');
     };
     d.jugadas.forEach(repetir);
@@ -1160,6 +1207,7 @@ class Estado {
     this.pos = new Int16Array(N);
     this.vacias = 0;
     this.puntos = new Float64Array(jugadores + 1); // puntuación de cada jugador (índice 1..jugadores)
+    this.fuera = new Uint8Array(jugadores + 1);    // 1 si el jugador se ha rendido (no juega ni puede ganar)
     this.jugador = 1;
     this.accion = MARCAR;
   }
@@ -1182,6 +1230,7 @@ class Estado {
       e.diag[2 * (Math.min(a[1], b[1]) * C + Math.min(a[0], b[0])) + ((a[0] - b[0]) * (a[1] - b[1]) > 0 ? 0 : 1)] = jugador;
     }
     p.puntuaciones.forEach((x, k) => { e.puntos[k + 1] = x; });
+    for (const q of p.rendidos) e.fuera[q] = 1;
     e.jugador = p.jugador; e.accion = p.accion === 'marcar' ? MARCAR : BLOQUEAR;
     return e;
   }
@@ -1195,8 +1244,8 @@ class Estado {
 
   raiz(i) { const padre = this.padre; while (padre[i] !== i) { padre[i] = padre[padre[i]]; i = padre[i]; } return i; }
   quitarVacia(i) { const k = this.pos[i], u = this.vac[--this.vacias]; this.vac[k] = u; this.pos[u] = k; }
-  // El rival que más puntos lleva (frente a él se mide crecer y estorbar).
-  rival(j) { let r = 0, mejor = -1; for (let q = 1; q <= this.jugadores; q++) if (q !== j && this.puntos[q] > mejor) { mejor = this.puntos[q]; r = q; } return r; }
+  // El rival (que no se haya rendido) que más puntos lleva (frente a él se mide crecer y estorbar).
+  rival(j) { let r = 0, mejor = -1; for (let q = 1; q <= this.jugadores; q++) if (q !== j && !this.fuera[q] && this.puntos[q] > mejor) { mejor = this.puntos[q]; r = q; } return r; }
 
   // Pone el punto del jugador j en la casilla vacía i: forma las aristas que tocan y actualiza grupos y puntuación.
   poner(i, j) {
@@ -1232,7 +1281,7 @@ class Estado {
       this.poner(i, this.jugador);
       if (this.bloqueadores && this.vacias > 0) { this.accion = BLOQUEAR; return; }
     } else { this.tab[i] = -1; this.quitarVacia(i); }
-    this.jugador = this.jugador % this.jugadores + 1;
+    do { this.jugador = this.jugador % this.jugadores + 1; } while (this.fuera[this.jugador]);
     this.accion = MARCAR;
   }
 
@@ -1312,9 +1361,11 @@ function resultados(est) {
   const J = est.jugadores, p = est.puntos, v = new Float64Array(J + 1);
   let max1 = -Infinity, max2 = -Infinity, empatados = 0;
   for (let q = 1; q <= J; q++) {
+    if (est.fuera[q]) continue;
     if (p[q] > max1) { max2 = max1; max1 = p[q]; empatados = 1; } else if (p[q] === max1) empatados++; else if (p[q] > max2) max2 = p[q];
   }
   for (let q = 1; q <= J; q++) {
+    if (est.fuera[q]) continue;   // quien se ha rendido ya no puede ganar
     const dif = p[q] - (p[q] === max1 && empatados === 1 ? max2 : max1);
     v[q] = (dif > 0 ? 1 : dif === 0 ? 0.5 : 0) + MARGEN * dif / (Math.abs(dif) + ESCALA);
   }
@@ -1411,7 +1462,7 @@ const el = {
   svg: $('svg'), zona: $('zona'), tablero: $('tablero'), marcador: $('marcador'),
   estado: $('estado'), estadoPieza: $('estado-pieza'), estadoTexto: $('estado-texto'), estadoVariante: $('estado-variante'), verResultado: $('ver-resultado'), continuar: $('continuar'), variantes: $('variantes'), quienes: $('quienes'),
   aviso: $('aviso'), fin: $('fin'), finResultado: $('fin-resultado'), finPuntos: $('fin-puntos'),
-  deshacer: $('deshacer'), rehacer: $('rehacer'), sonido: $('sonido'), tema: $('tema'),
+  deshacer: $('deshacer'), rehacer: $('rehacer'), rendirse: $('rendirse'), dialogoRendirse: $('dialogo-rendirse'), sonido: $('sonido'), tema: $('tema'),
   dialogoNueva: $('dialogo-nueva'), formNueva: $('form-nueva'), dialogoConfirmar: $('dialogo-confirmar'), dialogoAyuda: $('dialogo-ayuda'),
 };
 
@@ -1656,9 +1707,10 @@ function pintarMarcador() {
     const j = i + 1;
     const activa = !partida.terminada && j === partida.jugador;
     const ganadora = partida.terminada && partida.ganadores.includes(j);
+    const rendida = partida.rendidos.includes(j);
     const sube = conAnimacion && n > puntuacionesVistas[i];
-    return `<li class="ficha ${claseJugador(j)}${activa ? ' activa' : ''}${ganadora ? ' ganadora' : ''}"${activa ? ' aria-current="true"' : ''}>` +
-      `<span class="bolita" aria-hidden="true"></span><span class="nombre">Jugador ${j}${esMaquina(j) ? ' <small class="maquina-etiqueta">máquina</small>' : ''}</span><span class="cifra${sube ? ' sube' : ''}">${n}</span></li>`;
+    return `<li class="ficha ${claseJugador(j)}${activa ? ' activa' : ''}${ganadora ? ' ganadora' : ''}${rendida ? ' rendida' : ''}"${activa ? ' aria-current="true"' : ''}>` +
+      `<span class="bolita" aria-hidden="true"></span><span class="nombre">Jugador ${j}${esMaquina(j) ? ' <small class="maquina-etiqueta">máquina</small>' : ''}${rendida ? ' <small class="maquina-etiqueta">se rindió</small>' : ''}</span><span class="cifra${sube ? ' sube' : ''}">${n}</span></li>`;
   }).join('');
   puntuacionesVistas = p;
 }
@@ -1667,6 +1719,10 @@ const puntosTexto = n => `${n} ${n === 1 ? 'punto' : 'puntos'}`;
 const enumerar = lista => (lista.length === 2 ? `${lista[0]} y ${lista[1]}` : `${lista.slice(0, -1).join(', ')} y ${lista[lista.length - 1]}`);
 function textoResultado() {
   const g = partida.ganadores, maximo = partida.puntuaciones[g[0] - 1];
+  if (partida.vacias > 0) {
+    const quien = nombreJugador(g[0]).replace('Jugador', 'jugador'), rendidos = partida.rendidos;
+    return `Gana el ${quien}: ` + (rendidos.length === 1 ? `el jugador ${rendidos[0]} se rindió` : 'los demás se han rendido');
+  }
   if (g.length === 1) return `Gana el ${nombreJugador(g[0]).replace('Jugador', 'jugador')} con ${puntosTexto(maximo)}`;
   return `Empate a ${puntosTexto(maximo)}` + (g.length < partida.jugadores ? ` entre los jugadores ${enumerar(g)}` : '');
 }
@@ -1705,7 +1761,7 @@ function pintarFin() {
   el.finResultado.textContent = textoResultado();
   el.finPuntos.innerHTML = partida.puntuaciones.map((n, i) => {
     const j = i + 1;
-    return `<li class="${claseJugador(j)}${partida.ganadores.includes(j) ? ' ganador' : ''}"><span class="bolita" aria-hidden="true"></span>${nombreJugador(j)}: <strong>${puntosTexto(n)}</strong></li>`;
+    return `<li class="${claseJugador(j)}${partida.ganadores.includes(j) ? ' ganador' : ''}"><span class="bolita" aria-hidden="true"></span>${nombreJugador(j)}${partida.rendidos.includes(j) ? ' (se rindió)' : ''}: <strong>${puntosTexto(n)}</strong></li>`;
   }).join('');
 }
 
@@ -1719,6 +1775,7 @@ function pintar(nueva) {
   el.tablero.classList.toggle('terminada', partida.terminada);
   el.deshacer.disabled = !puedeDeshacerAhora();
   el.rehacer.disabled = !partida.puedeRehacer;
+  el.rendirse.disabled = !partida.puedeRendirse || esMaquina(partida.jugador);
   guardarPartida();
 }
 function guardarPartida() {
@@ -1870,7 +1927,7 @@ function rehacer() {
   finOculto = false;
   if (partida.terminada) programarFin();
   const j = partida.jugadas[partida.jugadas.length - 1];
-  pintar([j.columna, j.fila]);
+  pintar(j.accion === 'rendirse' ? undefined : [j.columna, j.fila]);
   programarMaquina();
 }
 el.continuar.addEventListener('click', () => {
@@ -1935,6 +1992,27 @@ document.addEventListener('keydown', evento => {
   if (evento.shiftKey) rehacer(); else deshacer();
 });
 
+// Rendirse: el jugador al que le toca (una persona) queda fuera y los demás siguen; si solo queda uno, gana.
+el.rendirse.addEventListener('click', () => {
+  if (el.rendirse.disabled) return;
+  const quedan = partida.jugadores - partida.rendidos.length - 1;
+  $('texto-rendirse').textContent = quedan === 1
+    ? `${nombreJugador(partida.jugador)} se rinde y la partida termina: gana el otro jugador.`
+    : `${nombreJugador(partida.jugador)} se rinde y deja de jugar; los demás siguen. Sus puntos se quedan en el tablero, pero ya no puede ganar. Se puede deshacer.`;
+  el.dialogoRendirse.showModal();
+});
+$('no-rendirse').addEventListener('click', () => el.dialogoRendirse.close());
+$('confirmar-rendirse').addEventListener('click', () => {
+  el.dialogoRendirse.close();
+  ignorarTableroHasta = performance.now() + 350;
+  cancelarMaquina();
+  if (!partida.rendirse().ok) return;
+  ocultarAviso();
+  finOculto = false;
+  if (partida.terminada) programarFin();
+  pintar();
+  programarMaquina();
+});
 el.deshacer.addEventListener('click', deshacer);
 el.rehacer.addEventListener('click', rehacer);
 $('ver-tablero').addEventListener('click', () => {
