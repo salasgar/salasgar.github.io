@@ -248,6 +248,7 @@ body {
 @supports (color: color-mix(in srgb, red 50%, blue)) {
   .ficha.activa { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color) 30%, transparent); }
 }
+.ficha .maquina-etiqueta { font-size: 12px; font-weight: 500; color: var(--texto-suave); }
 .ficha.ganadora { border-color: var(--color); }
 .ficha.ganadora .cifra { color: var(--color-texto); }
 .cifra.sube { animation: subir .45s ease-out; }
@@ -469,6 +470,12 @@ dialog a { color: var(--acento); word-break: break-all; }
   -moz-appearance: textfield;
 }
 .paso input::-webkit-outer-spin-button, .paso input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* Quién juega: persona o máquina (y nivel) por jugador */
+.quien { border-top: 1px solid var(--borde); }
+.quien .campo { margin: 8px 0; }
+.quien .nivel { padding-left: 22px; }
+.nombre-jugador { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--color-texto); }
+.nombre-jugador .bolita { width: 14px; height: 14px; }
 /* Variantes de reglas en «Nueva partida» */
 .variantes { margin: 12px 0 0; border-top: 1px solid var(--borde); padding-top: 6px; }
 .variantes summary { cursor: pointer; font-weight: 600; padding: 8px 0; }
@@ -560,6 +567,9 @@ select {
   .marcador { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ficha { padding: 4px 6px; }
   .ficha .cifra { min-width: 1em; }
+  /* fichas de ≈150 px: «Jugador 2 máquina» no cabe; la etiqueta pasa a una segunda línea en vez de recortar el número */
+  .ficha .nombre { white-space: normal; line-height: 1.1; }
+  .ficha .maquina-etiqueta { display: block; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -607,6 +617,7 @@ select {
       </span>
     </span>
     <button type="button" class="boton pequeno" id="ver-resultado" hidden>Ver resultado</button>
+    <button type="button" class="boton pequeno" id="continuar" hidden>Continuar</button>
   </div>
 
   <div class="zona" id="zona">
@@ -644,6 +655,76 @@ select {
         <label><input type="radio" name="jugadores" value="2" checked><span>2</span></label>
         <label><input type="radio" name="jugadores" value="3"><span>3</span></label>
         <label><input type="radio" name="jugadores" value="4"><span>4</span></label>
+      </div>
+    </div>
+    <div class="quienes" id="quienes">
+      <div class="quien j1" data-jugador="1">
+        <div class="campo">
+          <span class="nombre-jugador" id="quien-1"><span class="bolita" aria-hidden="true"></span>Jugador 1</span>
+          <div class="segmentos" role="radiogroup" aria-labelledby="quien-1">
+            <label><input type="radio" name="tipo1" value="persona" checked><span>Persona</span></label>
+            <label><input type="radio" name="tipo1" value="maquina"><span>Máquina</span></label>
+          </div>
+        </div>
+        <div class="campo nivel" hidden>
+          <span id="nivel-1">Nivel</span>
+          <div class="segmentos" role="radiogroup" aria-labelledby="quien-1 nivel-1">
+            <label><input type="radio" name="nivel1" value="facil"><span>Fácil</span></label>
+            <label><input type="radio" name="nivel1" value="medio" checked><span>Medio</span></label>
+            <label><input type="radio" name="nivel1" value="dificil"><span>Difícil</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="quien j2" data-jugador="2">
+        <div class="campo">
+          <span class="nombre-jugador" id="quien-2"><span class="bolita" aria-hidden="true"></span>Jugador 2</span>
+          <div class="segmentos" role="radiogroup" aria-labelledby="quien-2">
+            <label><input type="radio" name="tipo2" value="persona" checked><span>Persona</span></label>
+            <label><input type="radio" name="tipo2" value="maquina"><span>Máquina</span></label>
+          </div>
+        </div>
+        <div class="campo nivel" hidden>
+          <span id="nivel-2">Nivel</span>
+          <div class="segmentos" role="radiogroup" aria-labelledby="quien-2 nivel-2">
+            <label><input type="radio" name="nivel2" value="facil"><span>Fácil</span></label>
+            <label><input type="radio" name="nivel2" value="medio" checked><span>Medio</span></label>
+            <label><input type="radio" name="nivel2" value="dificil"><span>Difícil</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="quien j3" data-jugador="3">
+        <div class="campo">
+          <span class="nombre-jugador" id="quien-3"><span class="bolita" aria-hidden="true"></span>Jugador 3</span>
+          <div class="segmentos" role="radiogroup" aria-labelledby="quien-3">
+            <label><input type="radio" name="tipo3" value="persona" checked><span>Persona</span></label>
+            <label><input type="radio" name="tipo3" value="maquina"><span>Máquina</span></label>
+          </div>
+        </div>
+        <div class="campo nivel" hidden>
+          <span id="nivel-3">Nivel</span>
+          <div class="segmentos" role="radiogroup" aria-labelledby="quien-3 nivel-3">
+            <label><input type="radio" name="nivel3" value="facil"><span>Fácil</span></label>
+            <label><input type="radio" name="nivel3" value="medio" checked><span>Medio</span></label>
+            <label><input type="radio" name="nivel3" value="dificil"><span>Difícil</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="quien j4" data-jugador="4">
+        <div class="campo">
+          <span class="nombre-jugador" id="quien-4"><span class="bolita" aria-hidden="true"></span>Jugador 4</span>
+          <div class="segmentos" role="radiogroup" aria-labelledby="quien-4">
+            <label><input type="radio" name="tipo4" value="persona" checked><span>Persona</span></label>
+            <label><input type="radio" name="tipo4" value="maquina"><span>Máquina</span></label>
+          </div>
+        </div>
+        <div class="campo nivel" hidden>
+          <span id="nivel-4">Nivel</span>
+          <div class="segmentos" role="radiogroup" aria-labelledby="quien-4 nivel-4">
+            <label><input type="radio" name="nivel4" value="facil"><span>Fácil</span></label>
+            <label><input type="radio" name="nivel4" value="medio" checked><span>Medio</span></label>
+            <label><input type="radio" name="nivel4" value="dificil"><span>Difícil</span></label>
+          </div>
+        </div>
       </div>
     </div>
     <div class="campo">
@@ -728,6 +809,7 @@ select {
     </ul>
     <p>Variante «sin bloqueadores»: cada turno es solo poner un punto.</p>
     <p>Más variantes, en «Nueva partida» → «Variantes del juego»: si una línea puede cruzar a otra de distinto color; si cuenta solo el grupo mayor o la suma de todos los grupos; y cuánto vale un grupo de n puntos y m conexiones (n, m, n + m, n(n+1)/2, m(m+1)/2 o la suma de las dos últimas).</p>
+    <p>También puedes jugar contra la máquina: en «Nueva partida» elige «Máquina» para el jugador que quieras y su nivel (fácil, medio o difícil).</p>
     <p>Con teclado: flechas para moverte por el tablero, Enter o espacio para poner la pieza, y Ctrl+Z (⌘Z en Mac) para deshacer.</p>
     <p>Juego original en Scratch: <a href="https://scratch.mit.edu/projects/423281174/" target="_blank" rel="noopener">https://scratch.mit.edu/projects/423281174/</a></p>
     <div class="dialogo-botones">
@@ -1002,6 +1084,305 @@ class Partida {
     return p;
   }
 }
+
+// ---------- oponente automático ----------
+// Máquina (oponente automático) de «Conecta puntos», enfoque Monte Carlo.
+// Niveles: facil (heurística de crecimiento con mucho ruido), medio (heurística codiciosa de crecer y estorbar,
+// a profundidad 1) y dificil (búsqueda Monte Carlo en árbol: UCB1 con ensanchamiento progresivo, ordenación de
+// jugadas por la heurística y partidas de prueba rápidas guiadas por ella; presupuesto de trabajo y corte por tiempo).
+// Trabaja sobre una representación propia y plana del tablero (Int8Array) con grupos por union-find, que reproduce
+// las reglas de Partida: aristas explícitas, cruces prohibidos, valor de grupo y puntuación «mayor» o «suma».
+
+const DIRECCIONES = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+const NIVELES = ['facil', 'medio', 'dificil'];
+const MARCAR = 0, BLOQUEAR = 1;
+
+const UNIDADES_POR_MS = 1200;  // casillas evaluadas por ms de tiempoMaximo (en este Mac llena ~1/3 del tope; en un móvil manda el reloj)
+const COSTE_ITERACION = 24;    // trabajo fijo que se apunta por iteración (copiar el estado, recorrer el árbol)
+const HORIZONTE = 160;         // jugadas simuladas como mucho por partida de prueba (en tableros grandes se corta y se mira quién va ganando)
+const MUESTRA = 16;            // casillas que mira la política rápida en cada jugada simulada
+const EPSILON = 0.1;           // probabilidad de jugada al azar en las partidas de prueba
+const RUIDO_SIMULACION = 0.6;  // ruido (en puntos) de la política rápida, para que las partidas de prueba varíen
+const RUIDO_ORDEN = 0.2;       // ruido al ordenar las jugadas de un nodo del árbol
+const CANDIDATOS_NODO = 96;    // casillas que se evalúan al ordenar las jugadas de un nodo (las demás se muestrean)
+const EXPLORACION = 0.7;       // constante de UCB1
+const ANCHURA = 1.2, CRECIMIENTO = 0.45; // ensanchamiento progresivo: hijos permitidos = 1 + ANCHURA · visitas^CRECIMIENTO
+const MARGEN = 0.3, ESCALA = 2; // peso de la diferencia de puntos en el resultado de una simulación (además de ganar/empatar/perder)
+const PESO_LIBERTAD = 0.15;    // valor de cada casilla vacía alrededor (sitio para crecer)
+const PESO_PROPIO = 0.5;       // al bloquear, penalización por taparme una casilla buena para mí
+const RUIDO_FACIL = 1.5, AZAR_FACIL = 0.25; // nivel fácil: ruido en puntos y probabilidad de jugar al azar
+
+// --- Geometría por tamaño de tablero (se calcula una vez por tamaño) ---
+const geometrias = new Map();
+function geometria(C, F) {
+  const clave = C + 'x' + F;
+  let g = geometrias.get(clave);
+  if (g) return g;
+  const N = C * F;
+  const vecino = new Int16Array(N * 8).fill(-1);   // índice del vecino en cada dirección, -1 si no existe
+  const diagonal = new Int16Array(N * 8).fill(-1); // en las diagonales: 2·(casilla superior izquierda del cuadrado 2×2) + tipo (0 «\», 1 «/»)
+  for (let f = 0; f < F; f++) for (let c = 0; c < C; c++) {
+    const i = f * C + c;
+    DIRECCIONES.forEach(([dx, dy], d) => {
+      const x = c + dx, y = f + dy;
+      if (x < 0 || y < 0 || x >= C || y >= F) return;
+      vecino[i * 8 + d] = y * C + x;
+      if (dx && dy) diagonal[i * 8 + d] = 2 * (Math.min(f, y) * C + Math.min(c, x)) + (dx * dy > 0 ? 0 : 1);
+    });
+  }
+  g = { C, F, N, vecino, diagonal };
+  geometrias.set(clave, g);
+  return g;
+}
+
+// --- Estado propio de la partida ---
+const medida = new Float64Array(3);            // salida de Estado.evaluar: [ganancia propia, ganancia del rival, libertades]
+const raicesJ = new Int16Array(8), raicesR = new Int16Array(8);
+function contiene(lista, n, x) { for (let k = 0; k < n; k++) if (lista[k] === x) return true; return false; }
+
+class Estado {
+  constructor(geo, reglas, jugadores, bloqueadores) {
+    const N = geo.N;
+    this.geo = geo;
+    this.jugadores = jugadores;
+    this.bloqueadores = bloqueadores;
+    this.prohibidos = reglas.cruces === 'prohibidos';
+    this.suma = reglas.puntuacion === 'suma';
+    const formula = reglas.valor;
+    this.valor = (n, m) => Partida.valorGrupo(n, m, formula);
+    this.pesoAmenaza = bloqueadores ? 0.4 : 0.8; // al marcar, cuánto vale quitarle al rival su casilla (sin bloqueadores es la única manera)
+    this.tab = new Int8Array(N);                 // 0 vacía, -1 bloqueada, j punto del jugador j
+    this.padre = new Int16Array(N);              // union-find de los puntos; en la raíz, tam (puntos) y ari (aristas) del grupo
+    this.tam = new Int16Array(N);
+    this.ari = new Int32Array(N);
+    this.diag = new Int8Array(this.prohibidos ? 2 * N : 0); // dueño de cada diagonal trazada (solo con cruces prohibidos)
+    this.vac = new Int16Array(N);                // lista de casillas vacías (las `vacias` primeras) y posición de cada una en ella
+    this.pos = new Int16Array(N);
+    this.vacias = 0;
+    this.puntos = new Float64Array(jugadores + 1); // puntuación de cada jugador (índice 1..jugadores)
+    this.jugador = 1;
+    this.accion = MARCAR;
+  }
+
+  static desdePartida(p) {
+    const geo = geometria(p.columnas, p.filas), e = new Estado(geo, p.reglas, p.jugadores, p.bloqueadores);
+    const C = geo.C;
+    for (let f = 0; f < geo.F; f++) for (let c = 0; c < C; c++) {
+      const i = f * C + c, v = p.tablero[f][c];
+      e.padre[i] = i; e.tam[i] = 1;
+      if (v === 0) { e.pos[i] = e.vacias; e.vac[e.vacias++] = i; } else e.tab[i] = v === 'X' ? -1 : v;
+    }
+    for (const g of p.grupos()) {
+      const r = g.casillas[0][1] * C + g.casillas[0][0];
+      for (const [c, f] of g.casillas) e.padre[f * C + c] = r;
+      e.tam[r] = g.casillas.length; e.ari[r] = g.aristas;
+    }
+    if (e.prohibidos) for (const { jugador, a, b } of p.lineas()) {
+      if (a[0] === b[0] || a[1] === b[1]) continue; // solo las diagonales pueden cruzarse
+      e.diag[2 * (Math.min(a[1], b[1]) * C + Math.min(a[0], b[0])) + ((a[0] - b[0]) * (a[1] - b[1]) > 0 ? 0 : 1)] = jugador;
+    }
+    p.puntuaciones.forEach((x, k) => { e.puntos[k + 1] = x; });
+    e.jugador = p.jugador; e.accion = p.accion === 'marcar' ? MARCAR : BLOQUEAR;
+    return e;
+  }
+
+  copiar() {
+    const e = Object.create(Estado.prototype);
+    Object.assign(e, this);
+    for (const campo of ['tab', 'padre', 'tam', 'ari', 'diag', 'vac', 'pos', 'puntos']) e[campo] = this[campo].slice();
+    return e;
+  }
+
+  raiz(i) { const padre = this.padre; while (padre[i] !== i) { padre[i] = padre[padre[i]]; i = padre[i]; } return i; }
+  quitarVacia(i) { const k = this.pos[i], u = this.vac[--this.vacias]; this.vac[k] = u; this.pos[u] = k; }
+  // El rival que más puntos lleva (frente a él se mide crecer y estorbar).
+  rival(j) { let r = 0, mejor = -1; for (let q = 1; q <= this.jugadores; q++) if (q !== j && this.puntos[q] > mejor) { mejor = this.puntos[q]; r = q; } return r; }
+
+  // Pone el punto del jugador j en la casilla vacía i: forma las aristas que tocan y actualiza grupos y puntuación.
+  poner(i, j) {
+    const { vecino, diagonal } = this.geo, tab = this.tab, tam = this.tam, ari = this.ari, base = i * 8;
+    tab[i] = j; this.quitarVacia(i);
+    if (this.suma) this.puntos[j] += this.valor(1, 0);
+    let ri = i;
+    for (let d = 0; d < 8; d++) {
+      const k = vecino[base + d];
+      if (k < 0 || tab[k] !== j) continue;
+      if (this.prohibidos && diagonal[base + d] >= 0) {
+        const o = this.diag[diagonal[base + d] ^ 1];
+        if (o !== 0 && o !== j) continue;    // cruzaría una línea de otro color ya trazada
+        this.diag[diagonal[base + d]] = j;
+      }
+      const rk = this.raiz(k);
+      if (rk === ri) {                       // arista dentro del mismo grupo
+        if (this.suma) this.puntos[j] -= this.valor(tam[ri], ari[ri]);
+        ari[ri]++;
+      } else {                               // se fusionan dos grupos
+        if (this.suma) this.puntos[j] -= this.valor(tam[ri], ari[ri]) + this.valor(tam[rk], ari[rk]);
+        const [chico, grande] = tam[ri] < tam[rk] ? [ri, rk] : [rk, ri];
+        this.padre[chico] = grande; tam[grande] += tam[chico]; ari[grande] += ari[chico] + 1; ri = grande;
+      }
+      if (this.suma) this.puntos[j] += this.valor(tam[ri], ari[ri]);
+    }
+    if (!this.suma) this.puntos[j] = Math.max(this.puntos[j], this.valor(tam[ri], ari[ri]));
+  }
+
+  // Aplica la acción que toca en la casilla vacía i y pasa el turno cuando corresponde.
+  jugar(i) {
+    if (this.accion === MARCAR) {
+      this.poner(i, this.jugador);
+      if (this.bloqueadores && this.vacias > 0) { this.accion = BLOQUEAR; return; }
+    } else { this.tab[i] = -1; this.quitarVacia(i); }
+    this.jugador = this.jugador % this.jugadores + 1;
+    this.accion = MARCAR;
+  }
+
+  // Mide la casilla vacía i para el jugador j frente al rival r, sin tocar nada: cuánto subiría la puntuación
+  // de cada uno si pusiera ahí su punto y cuántas casillas vacías tiene alrededor. Deja el resultado en `medida`.
+  evaluar(i, j, r) {
+    const { vecino, diagonal } = this.geo, tab = this.tab, tam = this.tam, ari = this.ari, base = i * 8;
+    let lib = 0, nJ = 1, mJ = 0, viejoJ = 0, kJ = 0, nR = 1, mR = 0, viejoR = 0, kR = 0;
+    for (let d = 0; d < 8; d++) {
+      const k = vecino[base + d];
+      if (k < 0) continue;
+      const t = tab[k];
+      if (t === 0) { lib++; continue; }
+      if (t !== j && t !== r) continue;
+      if (this.prohibidos && diagonal[base + d] >= 0) { const o = this.diag[diagonal[base + d] ^ 1]; if (o !== 0 && o !== t) continue; }
+      const ra = this.raiz(k);
+      if (t === j) { mJ++; if (!contiene(raicesJ, kJ, ra)) { raicesJ[kJ++] = ra; nJ += tam[ra]; mJ += ari[ra]; viejoJ += this.valor(tam[ra], ari[ra]); } }
+      else { mR++; if (!contiene(raicesR, kR, ra)) { raicesR[kR++] = ra; nR += tam[ra]; mR += ari[ra]; viejoR += this.valor(tam[ra], ari[ra]); } }
+    }
+    medida[0] = this.ganancia(j, nJ, mJ, viejoJ);
+    medida[1] = this.ganancia(r, nR, mR, viejoR);
+    medida[2] = lib;
+  }
+  // Subida de puntuación del jugador j al formar un grupo de n puntos y m aristas a partir de grupos que valían `viejo`.
+  ganancia(j, n, m, viejo) { const v = this.valor(n, m); return this.suma ? v - viejo : Math.max(0, v - this.puntos[j]); }
+}
+
+// --- Heurística ligera: crecer, quitarle sitio al rival y tener donde seguir ---
+let trabajo = 0; // casillas evaluadas en la búsqueda en curso (presupuesto del nivel difícil)
+
+function valorCasilla(est, i, j, r) {
+  est.evaluar(i, j, r);
+  const propia = medida[0], rival = medida[1], libertades = PESO_LIBERTAD * medida[2];
+  if (est.accion === MARCAR) return propia + est.pesoAmenaza * rival + libertades; // crecer y, de paso, quitarle su casilla al rival
+  return rival - PESO_PROPIO * propia + libertades;                                // estorbar al rival sin taparme a mí
+}
+
+// Ordena de mejor a peor hasta `maximo` casillas vacías (si hay más, una muestra sin repetición) con ruido uniforme de amplitud `ruido`.
+function candidatos(est, rnd, ruido, maximo) {
+  const V = est.vacias, vac = est.vac, pos = est.pos, n = Math.min(V, maximo), j = est.jugador, r = est.rival(j);
+  const valores = new Float64Array(n), orden = new Array(n);
+  for (let k = 0; k < n; k++) {
+    if (n < V) { // barajado parcial de la lista de vacías (el orden de la lista no significa nada)
+      const s = k + Math.floor(rnd() * (V - k)), a = vac[k], b = vac[s];
+      vac[k] = b; pos[b] = k; vac[s] = a; pos[a] = s;
+    }
+    valores[k] = valorCasilla(est, vac[k], j, r) + ruido * rnd();
+    orden[k] = k;
+  }
+  trabajo += n;
+  orden.sort((a, b) => valores[b] - valores[a]);
+  return orden.map(k => vac[k]);
+}
+
+// Política de las partidas de prueba: la mejor casilla de una muestra según la heurística, con ruido y algo de azar.
+function jugadaRapida(est, rnd) {
+  const V = est.vacias, vac = est.vac;
+  if (rnd() < EPSILON) return vac[Math.floor(rnd() * V)];
+  const j = est.jugador, r = est.rival(j), n = Math.min(V, MUESTRA);
+  let mejor = -Infinity, celda = -1;
+  for (let k = 0; k < n; k++) {
+    const i = V <= MUESTRA ? vac[k] : vac[Math.floor(rnd() * V)];
+    const v = valorCasilla(est, i, j, r) + RUIDO_SIMULACION * rnd();
+    if (v > mejor) { mejor = v; celda = i; }
+  }
+  trabajo += n;
+  return celda;
+}
+
+function simular(est, rnd) {
+  for (let paso = 0; est.vacias > 0 && paso < HORIZONTE; paso++) est.jugar(jugadaRapida(est, rnd));
+}
+
+// Resultado de una posición final (o del horizonte) para cada jugador: 1 gana, 0,5 empata, 0 pierde, más un margen
+// acotado según la diferencia con el mejor de los demás.
+function resultados(est) {
+  const J = est.jugadores, p = est.puntos, v = new Float64Array(J + 1);
+  let max1 = -Infinity, max2 = -Infinity, empatados = 0;
+  for (let q = 1; q <= J; q++) {
+    if (p[q] > max1) { max2 = max1; max1 = p[q]; empatados = 1; } else if (p[q] === max1) empatados++; else if (p[q] > max2) max2 = p[q];
+  }
+  for (let q = 1; q <= J; q++) {
+    const dif = p[q] - (p[q] === max1 && empatados === 1 ? max2 : max1);
+    v[q] = (dif > 0 ? 1 : dif === 0 ? 0.5 : 0) + MARGEN * dif / (Math.abs(dif) + ESCALA);
+  }
+  return v;
+}
+
+// --- Nivel difícil: búsqueda Monte Carlo en árbol ---
+function nodo(celda, movio) { return { celda, movio, visitas: 0, suma: 0, cands: null, hijos: [] }; }
+
+function buscar(est0, rnd, presupuesto, limite) {
+  const raiz = nodo(-1, 0), camino = [];
+  trabajo = 0;
+  while (trabajo < presupuesto && performance.now() < limite) {
+    const est = est0.copiar();
+    let n = raiz;
+    camino.length = 0;
+    while (est.vacias > 0) {
+      if (!n.cands) n.cands = candidatos(est, rnd, RUIDO_ORDEN, CANDIDATOS_NODO);
+      const permitidos = Math.min(n.cands.length, 1 + Math.floor(ANCHURA * Math.pow(n.visitas, CRECIMIENTO)));
+      if (n.hijos.length < permitidos) {             // ensanchar: el siguiente candidato en orden heurístico
+        const hijo = nodo(n.cands[n.hijos.length], est.jugador);
+        n.hijos.push(hijo); est.jugar(hijo.celda); camino.push(hijo);
+        break;
+      }
+      const logN = Math.log(n.visitas);                // UCB1 entre los hijos ya abiertos
+      let mejor = -Infinity, elegido = null;
+      for (const h of n.hijos) {
+        const u = h.suma / h.visitas + EXPLORACION * Math.sqrt(logN / h.visitas);
+        if (u > mejor) { mejor = u; elegido = h; }
+      }
+      est.jugar(elegido.celda); camino.push(elegido); n = elegido;
+    }
+    simular(est, rnd);
+    const v = resultados(est);
+    raiz.visitas++;
+    for (const h of camino) { h.visitas++; h.suma += v[h.movio]; }
+    trabajo += COSTE_ITERACION;
+  }
+  if (!raiz.cands) raiz.cands = candidatos(est0, rnd, RUIDO_ORDEN, est0.vacias);
+  let mejor = null; // el hijo más visitado (en caso de empate, el de mejor media)
+  for (const h of raiz.hijos) if (!mejor || h.visitas > mejor.visitas || (h.visitas === mejor.visitas && h.suma > mejor.suma)) mejor = h;
+  return mejor ? mejor.celda : raiz.cands[0];
+}
+
+class Maquina {
+  constructor(nivel = 'medio', opciones = {}) {
+    if (!NIVELES.includes(nivel)) throw new RangeError('nivel desconocido: ' + nivel);
+    this._nivel = nivel;
+    this._aleatorio = opciones.aleatorio || Math.random;
+    this._tiempoMaximo = opciones.tiempoMaximo ?? 250;
+  }
+  get nivel() { return this._nivel; }
+
+  elegir(partida) {
+    if (partida.terminada) return null;
+    const inicio = performance.now(), rnd = this._aleatorio, est = Estado.desdePartida(partida);
+    let celda;
+    if (this._nivel === 'facil') {
+      est.pesoAmenaza = 0; // solo piensa en crecer (y en estorbar al bloquear), con mucho ruido
+      celda = rnd() < AZAR_FACIL ? est.vac[Math.floor(rnd() * est.vacias)] : candidatos(est, rnd, RUIDO_FACIL, est.vacias)[0];
+    } else if (this._nivel === 'medio') {
+      celda = candidatos(est, rnd, 1e-3, est.vacias)[0];
+    } else {
+      celda = buscar(est, rnd, this._tiempoMaximo * UNIDADES_POR_MS, inicio + this._tiempoMaximo * 0.8);
+    }
+    return { columna: celda % est.geo.C, fila: Math.floor(celda / est.geo.C) };
+  }
+}
 </script>
 
 <script>
@@ -1015,10 +1396,12 @@ const RETRASO_FIN = 600;      // ms antes de tapar el tablero al acabar, para ve
 const DEMO = [[2, 2], [7, 1], [6, 3], [3, 2], [3, 3], [5, 3], [6, 4], [4, 4], [2, 3], [7, 4], [5, 5], [1, 2], [1, 4], [6, 5], [7, 2], [0, 5], [0, 3], [8, 3], [8, 1], [1, 3]];
 const CLAVE = { partida: 'conecta-puntos.partida', opciones: 'conecta-puntos.opciones', tema: 'conecta-puntos.tema', sonido: 'conecta-puntos.sonido' };
 const LIMITES = { jugadores: [2, 4], columnas: [4, 16], filas: [4, 16] };
-const OPCIONES_DEFECTO = { jugadores: 2, columnas: 10, filas: 7, bloqueadores: true, cruces: 'permitidos', puntuacion: 'mayor', valor: 'n' };
+const OPCIONES_DEFECTO = { jugadores: 2, columnas: 10, filas: 7, bloqueadores: true, cruces: 'permitidos', puntuacion: 'mayor', valor: 'n', tipos: ['persona', 'persona', 'persona', 'persona'], niveles: ['medio', 'medio', 'medio', 'medio'] };
 const REGLAS_UI = { cruces: ['permitidos', 'prohibidos'], puntuacion: ['mayor', 'suma'], valor: ['n', 'm', 'n+m', 'tn', 'tm', 'tn+tm'] };
 const NOMBRE_VALOR = { 'n': 'n', 'm': 'm', 'n+m': 'n + m', 'tn': 'n(n+1)/2', 'tm': 'm(m+1)/2', 'tn+tm': 'n(n+1)/2 + m(m+1)/2' };
 const FONDO = { light: '#f9f9f7', dark: '#0d0d0d' };   // para <meta name="theme-color">
+const NIVELES_MAQUINA = ['facil', 'medio', 'dificil'];
+const RETRASO_MAQUINA = { marcar: 600, bloquear: 500 };   // ms de pausa antes de cada acción de la máquina, para que se vea la jugada anterior
 
 const demo = new URLSearchParams(location.search).get('demo');   // null si no hay ?demo=
 const movimientoReducido = matchMedia('(prefers-reduced-motion: reduce)');
@@ -1026,7 +1409,7 @@ const animar = () => !movimientoReducido.matches;
 const $ = id => document.getElementById(id);
 const el = {
   svg: $('svg'), zona: $('zona'), tablero: $('tablero'), marcador: $('marcador'),
-  estado: $('estado'), estadoPieza: $('estado-pieza'), estadoTexto: $('estado-texto'), estadoVariante: $('estado-variante'), verResultado: $('ver-resultado'), variantes: $('variantes'),
+  estado: $('estado'), estadoPieza: $('estado-pieza'), estadoTexto: $('estado-texto'), estadoVariante: $('estado-variante'), verResultado: $('ver-resultado'), continuar: $('continuar'), variantes: $('variantes'), quienes: $('quienes'),
   aviso: $('aviso'), fin: $('fin'), finResultado: $('fin-resultado'), finPuntos: $('fin-puntos'),
   deshacer: $('deshacer'), rehacer: $('rehacer'), sonido: $('sonido'), tema: $('tema'),
   dialogoNueva: $('dialogo-nueva'), formNueva: $('form-nueva'), dialogoConfirmar: $('dialogo-confirmar'), dialogoAyuda: $('dialogo-ayuda'),
@@ -1041,6 +1424,17 @@ let hover = null;              // casilla bajo el ratón, [columna, fila] o null
 let cursor = null;             // casilla del cursor de teclado, [columna, fila] o null
 let puntuacionesVistas = [];   // para animar la cifra que sube
 let ignorarTableroHasta = 0;   // tras cerrar un diálogo o el panel de fin, el segundo clic de un doble clic no debe jugar
+let tipos = [];                // 'persona' | 'maquina' por jugador (índice jugador - 1)
+let niveles = [];              // nivel de cada máquina
+let maquinas = new Map();      // jugador → Maquina
+let temporizadorMaquina = 0;   // distinto de 0 mientras una máquina espera su turno de pensar
+let pausada = false;           // partida de solo máquinas detenida tras deshacer o rehacer, hasta «Continuar»
+const esMaquina = j => tipos[j - 1] === 'maquina';
+const todasMaquinas = () => tipos.slice(0, partida.jugadores).every(t => t === 'maquina');
+// Con personas y máquinas mezcladas, Deshacer necesita alguna acción de una persona que retirar: si la máquina abrió y la
+// persona aún no ha jugado, retirar la apertura solo haría que la máquina abriera otra vez, en otro sitio.
+const puedeDeshacerAhora = () => partida.puedeDeshacer && (todasMaquinas() || partida.jugadas.some(j => !esMaquina(j.jugador)));
+const nombreJugador = j => `Jugador ${j}${esMaquina(j) ? ' (máquina)' : ''}`;
 
 // ---------- almacenamiento (siempre protegido; en modo demo no se guarda nada) ----------
 function leer(clave) {
@@ -1066,6 +1460,8 @@ function normalizarOpciones(o) {
     cruces: REGLAS_UI.cruces.includes(o.cruces) ? o.cruces : OPCIONES_DEFECTO.cruces,
     puntuacion: REGLAS_UI.puntuacion.includes(o.puntuacion) ? o.puntuacion : OPCIONES_DEFECTO.puntuacion,
     valor: REGLAS_UI.valor.includes(o.valor) ? o.valor : OPCIONES_DEFECTO.valor,
+    tipos: Array.from({ length: 4 }, (_, i) => (Array.isArray(o.tipos) && o.tipos[i] === 'maquina' ? 'maquina' : 'persona')),
+    niveles: Array.from({ length: 4 }, (_, i) => (Array.isArray(o.niveles) && NIVELES_MAQUINA.includes(o.niveles[i]) ? o.niveles[i] : 'medio')),
   };
 }
 // Texto corto de las reglas que se apartan de las de siempre ('' si son las de siempre).
@@ -1083,14 +1479,33 @@ function leerOpciones() {
 }
 
 // ---------- sonidos sintetizados con Web Audio ----------
+// Los navegadores no permiten sonido hasta el primer gesto del usuario en la página. Con la máquina eso importa: tras
+// restaurar la página puede jugar sola antes de ningún toque, y si encoláramos sus tonos en un contexto parado
+// estallarían todos juntos al primer gesto. Así que sin gesto no suena nada, y el contexto se crea dentro del gesto
+// (en todos los navegadores nace ya en marcha). Escape no cuenta como gesto para el navegador.
+let gestoHabido = false;
+const hayGesto = () => gestoHabido || Boolean(navigator.userActivation && navigator.userActivation.hasBeenActive);
+function anotarGesto(evento) {
+  if (evento.type === 'keydown' && evento.key === 'Escape') return;
+  gestoHabido = true;
+  document.removeEventListener('pointerup', anotarGesto, true);
+  document.removeEventListener('keydown', anotarGesto, true);
+  if (sonido.activo) sonido.preparar();
+}
+document.addEventListener('pointerup', anotarGesto, true);
+document.addEventListener('keydown', anotarGesto, true);
+
 const sonido = {
   activo: leer(CLAVE.sonido) !== 'no',
   ctx: null,
+  preparar() {
+    try { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { /* sin audio */ }
+  },
   // Un tono breve que baja (o sube) de `inicio` a `fin` con envolvente exponencial.
   tono({ inicio, fin = inicio, duracion, tipo = 'sine', volumen = 0.2, retraso = 0 }) {
-    if (!this.activo) return;
+    if (!this.activo || !hayGesto()) return;
     try {
-      if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.preparar();
       if (this.ctx.state !== 'running') reanudarAudio();   // iOS usa además el estado 'interrupted'
       const ctx = this.ctx, t = ctx.currentTime + retraso;
       const osc = ctx.createOscillator(), ganancia = ctx.createGain();
@@ -1223,7 +1638,7 @@ function pintarPiezas(nueva) {
 // Con ratón o lápiz, muestra en tenue lo que se va a poner en la casilla vacía bajo el puntero.
 function pintarSombra() {
   let html = '';
-  if (hover && !partida.terminada && partida.tablero[hover[1]][hover[0]] === 0) {
+  if (hover && !partida.terminada && !esMaquina(partida.jugador) && partida.tablero[hover[1]][hover[0]] === 0) {
     const [c, f] = hover;
     if (partida.accion === 'marcar') {
       const [x, y] = centro(c, f);
@@ -1243,7 +1658,7 @@ function pintarMarcador() {
     const ganadora = partida.terminada && partida.ganadores.includes(j);
     const sube = conAnimacion && n > puntuacionesVistas[i];
     return `<li class="ficha ${claseJugador(j)}${activa ? ' activa' : ''}${ganadora ? ' ganadora' : ''}"${activa ? ' aria-current="true"' : ''}>` +
-      `<span class="bolita" aria-hidden="true"></span><span class="nombre">Jugador ${j}</span><span class="cifra${sube ? ' sube' : ''}">${n}</span></li>`;
+      `<span class="bolita" aria-hidden="true"></span><span class="nombre">Jugador ${j}${esMaquina(j) ? ' <small class="maquina-etiqueta">máquina</small>' : ''}</span><span class="cifra${sube ? ' sube' : ''}">${n}</span></li>`;
   }).join('');
   puntuacionesVistas = p;
 }
@@ -1252,7 +1667,7 @@ const puntosTexto = n => `${n} ${n === 1 ? 'punto' : 'puntos'}`;
 const enumerar = lista => (lista.length === 2 ? `${lista[0]} y ${lista[1]}` : `${lista.slice(0, -1).join(', ')} y ${lista[lista.length - 1]}`);
 function textoResultado() {
   const g = partida.ganadores, maximo = partida.puntuaciones[g[0] - 1];
-  if (g.length === 1) return `Gana el jugador ${g[0]} con ${puntosTexto(maximo)}`;
+  if (g.length === 1) return `Gana el ${nombreJugador(g[0]).replace('Jugador', 'jugador')} con ${puntosTexto(maximo)}`;
   return `Empate a ${puntosTexto(maximo)}` + (g.length < partida.jugadores ? ` entre los jugadores ${enumerar(g)}` : '');
 }
 
@@ -1266,8 +1681,13 @@ function pintarEstado() {
     const marcar = partida.accion === 'marcar';
     clase = claseJugador(partida.jugador);
     pieza = marcar ? 'punto-mini' : 'bloqueador-mini';
-    texto = `Jugador ${partida.jugador}: ${marcar ? 'pon tu punto' : 'pon un bloqueador'}`;
+    // Textos cortos: en móviles de 360-390 px deben caber en una línea para que el tablero no salte en cada turno.
+    const quien = nombreJugador(partida.jugador);
+    texto = pausada ? `${quien} · en pausa`
+      : esMaquina(partida.jugador) ? `${quien} piensa…`
+      : `${quien}: ${marcar ? 'pon tu punto' : 'pon un bloqueador'}`;
   }
+  el.continuar.hidden = !(pausada && !partida.terminada);
   el.estado.className = `estado ${clase}`;
   el.estadoPieza.className = `pieza-mini ${pieza}`;
   el.estadoPieza.hidden = !pieza;
@@ -1285,7 +1705,7 @@ function pintarFin() {
   el.finResultado.textContent = textoResultado();
   el.finPuntos.innerHTML = partida.puntuaciones.map((n, i) => {
     const j = i + 1;
-    return `<li class="${claseJugador(j)}${partida.ganadores.includes(j) ? ' ganador' : ''}"><span class="bolita" aria-hidden="true"></span>Jugador ${j}: <strong>${puntosTexto(n)}</strong></li>`;
+    return `<li class="${claseJugador(j)}${partida.ganadores.includes(j) ? ' ganador' : ''}"><span class="bolita" aria-hidden="true"></span>${nombreJugador(j)}: <strong>${puntosTexto(n)}</strong></li>`;
   }).join('');
 }
 
@@ -1297,9 +1717,12 @@ function pintar(nueva) {
   pintarEstado();
   pintarFin();
   el.tablero.classList.toggle('terminada', partida.terminada);
-  el.deshacer.disabled = !partida.puedeDeshacer;
+  el.deshacer.disabled = !puedeDeshacerAhora();
   el.rehacer.disabled = !partida.puedeRehacer;
-  guardar(CLAVE.partida, partida.serializar());
+  guardarPartida();
+}
+function guardarPartida() {
+  guardar(CLAVE.partida, JSON.stringify({ partida: partida.serializar(), tipos, niveles }));
 }
 
 function cancelarFin() {
@@ -1316,8 +1739,18 @@ function programarFin() {
   }, animar() ? RETRASO_FIN : 0);
 }
 
-function establecer(nueva) {
+function establecer(nueva, quienes = opciones) {
   partida = nueva;
+  cancelarMaquina();
+  tipos = quienes.tipos.slice();
+  niveles = quienes.niveles.slice();
+  maquinas = new Map();
+  for (let j = 1; j <= partida.jugadores; j++) {
+    if (esMaquina(j)) {
+      try { maquinas.set(j, new Maquina(niveles[j - 1])); } catch { tipos[j - 1] = 'persona'; }   // sin máquina disponible, juega una persona
+    }
+  }
+  pausada = false;
   cancelarFin();
   ocultarAviso();
   finOculto = false;
@@ -1327,6 +1760,33 @@ function establecer(nueva) {
   montarTablero();
   pintar();
   ajustarTamano();   // con marcador y estado ya pintados, la medida de la zona es la buena
+  programarMaquina();
+}
+
+// ---------- turno de la máquina ----------
+function cancelarMaquina() {
+  clearTimeout(temporizadorMaquina);
+  temporizadorMaquina = 0;
+}
+// Si le toca a una máquina, piensa tras una pausa breve (así se ve la jugada anterior y el estado «piensa…»).
+// La pausa se mantiene aunque el sistema pida reducir movimiento: es el ritmo del turno, no una animación.
+function programarMaquina() {
+  cancelarMaquina();
+  if (partida.terminada || pausada || !esMaquina(partida.jugador)) return;
+  temporizadorMaquina = setTimeout(jugadaMaquina, RETRASO_MAQUINA[partida.accion]);
+}
+function jugadaMaquina() {
+  temporizadorMaquina = 0;
+  if (partida.terminada || pausada || !esMaquina(partida.jugador)) return;
+  let e = null;
+  try { e = maquinas.get(partida.jugador).elegir(partida); } catch { e = null; }
+  const valida = e && Number.isInteger(e.columna) && Number.isInteger(e.fila) && e.fila >= 0 && e.fila < partida.filas && e.columna >= 0 && e.columna < partida.columnas && partida.tablero[e.fila][e.columna] === 0;
+  if (!valida) {
+    // Nunca debería pasar; antes que quedarse colgada, juega en la primera casilla libre.
+    e = null;
+    for (let f = 0; f < partida.filas && !e; f++) for (let c = 0; c < partida.columnas && !e; c++) if (partida.tablero[f][c] === 0) e = { columna: c, fila: f };
+  }
+  jugar(e.columna, e.fila);
 }
 
 // ---------- avisos ----------
@@ -1384,27 +1844,45 @@ function jugar(c, f) {
       avisar(`¡El jugador ${r.jugador} ya tiene ${puntosTexto(r.puntuacion)}!`);
     }
   }
+  programarMaquina();
 }
 
+// Deshacer retira acciones hasta el punto de decisión anterior de una persona (la jugada de la persona y todo lo
+// que la máquina hizo después); con solo máquinas, una acción, y la partida queda en pausa hasta «Continuar».
 function deshacer() {
-  if (!partida.deshacer()) return;
+  if (!puedeDeshacerAhora()) return;
+  cancelarMaquina();
+  if (todasMaquinas()) { partida.deshacer(); pausada = true; }
+  else do { partida.deshacer(); } while (partida.puedeDeshacer && esMaquina(partida.jugador));
   cancelarFin();
   ocultarAviso();   // lo que anunciaba ya no es cierto
   finOculto = false;
   pintar();
+  programarMaquina();
 }
+// Rehacer repone acciones hasta el siguiente punto de decisión de una persona: la máquina repite lo que hizo.
 function rehacer() {
-  if (!partida.rehacer()) return;
+  if (!partida.puedeRehacer) return;
+  cancelarMaquina();
+  if (todasMaquinas()) { partida.rehacer(); pausada = true; }
+  else do { partida.rehacer(); } while (partida.puedeRehacer && esMaquina(partida.jugador) && !partida.terminada);
   ocultarAviso();
   finOculto = false;
   if (partida.terminada) programarFin();
   const j = partida.jugadas[partida.jugadas.length - 1];
   pintar([j.columna, j.fila]);
+  programarMaquina();
 }
+el.continuar.addEventListener('click', () => {
+  pausada = false;
+  pintarEstado();
+  programarMaquina();
+});
 
 // Solo `click`: un toque genera un único click, así no hay doble disparo touch + click.
 el.svg.addEventListener('click', evento => {
   if (performance.now() < ignorarTableroHasta) return;   // segundo clic de un doble clic sobre un botón que acaba de desaparecer
+  if (esMaquina(partida.jugador) && !partida.terminada) return;   // le toca a la máquina
   const casilla = casillaEn(evento);
   if (casilla) jugar(casilla[0], casilla[1]);
 });
@@ -1445,6 +1923,7 @@ el.svg.addEventListener('keydown', evento => {
     moverCursor(...FLECHAS[evento.key]);
   } else if ((evento.key === 'Enter' || evento.key === ' ') && cursor) {
     evento.preventDefault();
+    if (esMaquina(partida.jugador) && !partida.terminada) return;
     jugar(cursor[0], cursor[1]);
   }
 });
@@ -1477,12 +1956,26 @@ function abrirNueva() {
   campos.columnas.value = opciones.columnas;
   campos.filas.value = opciones.filas;
   campos.bloqueadores.value = opciones.bloqueadores ? 'si' : 'no';
+  for (let j = 1; j <= 4; j++) { campos[`tipo${j}`].value = opciones.tipos[j - 1]; campos[`nivel${j}`].value = opciones.niveles[j - 1]; }
+  actualizarQuienes();
   campos.cruces.value = opciones.cruces;
   campos.puntuacion.value = opciones.puntuacion;
   campos.valor.value = opciones.valor;
   el.variantes.open = Boolean(descripcionReglas(opciones));   // abierto solo si hay alguna variante activa
   el.dialogoNueva.showModal();
 }
+// Muestra solo las filas de los jugadores elegidos y el nivel de los que son máquina.
+function actualizarQuienes() {
+  const campos = el.formNueva.elements, cuantos = Number(campos.jugadores.value);
+  for (const fila of el.quienes.querySelectorAll('.quien')) {
+    const j = Number(fila.dataset.jugador);
+    fila.hidden = j > cuantos;
+    fila.querySelector('.nivel').hidden = campos[`tipo${j}`].value !== 'maquina';
+  }
+}
+el.formNueva.addEventListener('change', evento => {
+  if (/^(jugadores|tipo\d)$/.test(evento.target.name)) actualizarQuienes();
+});
 // Con una partida a medias se pide confirmación antes de descartarla.
 function pedirNuevaPartida() {
   if ((partida.puedeDeshacer || partida.puedeRehacer) && !partida.terminada) el.dialogoConfirmar.showModal(); else abrirNueva();
@@ -1510,6 +2003,8 @@ el.formNueva.addEventListener('submit', evento => {
     cruces: campos.cruces.value,
     puntuacion: campos.puntuacion.value,
     valor: campos.valor.value,
+    tipos: [1, 2, 3, 4].map(j => campos[`tipo${j}`].value),
+    niveles: [1, 2, 3, 4].map(j => campos[`nivel${j}`].value),
   });
   guardar(CLAVE.opciones, JSON.stringify(opciones));
   el.dialogoNueva.close();
@@ -1550,14 +2045,23 @@ if (demo !== null) {
   if (demo === 'fin') {
     for (let f = 0; f < p.filas; f++) for (let c = 0; c < p.columnas; c++) if (p.tablero[f][c] === 0) p.jugar(c, f);
   }
-  establecer(p);
+  establecer(p, OPCIONES_DEFECTO);
 } else {
-  let guardada = null;
+  let guardada = null, quienes = opciones;
   const texto = leer(CLAVE.partida);
   if (texto) {
-    try { guardada = Partida.deserializar(texto); } catch { /* partida guardada corrupta: se empieza otra */ }
+    try {
+      const d = JSON.parse(texto);
+      if (d && typeof d.partida === 'string') {
+        guardada = Partida.deserializar(d.partida);
+        quienes = normalizarOpciones({ ...opciones, tipos: d.tipos, niveles: d.niveles });
+      } else {
+        guardada = Partida.deserializar(texto);   // formato de la primera versión: todos persona
+        quienes = normalizarOpciones({ ...opciones, tipos: [] });
+      }
+    } catch { guardada = null; quienes = opciones; /* partida guardada corrupta: se empieza otra */ }
   }
-  establecer(guardada || new Partida(opciones));
+  establecer(guardada || new Partida(opciones), guardada ? quienes : opciones);
 }
 // El tablero se vuelve a medir al cambiar el tamaño de la ventana, girar el móvil o cambiar de alto el marcador.
 if ('ResizeObserver' in window) new ResizeObserver(ajustarTamano).observe(el.zona);
