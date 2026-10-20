@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Serpiente de divisibilidad</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --panel:#ffffff; --ink:#131a2b; --muted:#5b6478; --line:#d9dfeb;
+    --grid:#e7ecf6; --board:#ffffff;
+    --snake:#1f7a3f; --snake2:#2fa758; --head:#14532d;
+    --block:#3b5bdb; --blockInk:#ffffff;
+    --ok:#12874a; --bad:#c62828; --accent:#3b5bdb;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0e1220; --panel:#161c2e; --ink:#eef1f8; --muted:#a2acc4; --line:#2a3350;
+      --grid:#1c2337; --board:#131a2b;
+      --snake:#39b06a; --snake2:#54d68a; --head:#8ff0b5;
+      --block:#7aa2ff; --blockInk:#0e1220;
+      --ok:#4ade80; --bad:#ff6b6b; --accent:#7aa2ff;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow:hidden; -webkit-text-size-adjust:100%;
+  }
+  #app{height:100%; display:flex; flex-direction:column; gap:8px; padding:8px; max-width:1100px; margin:0 auto}
+
+  /* ---- HUD ---- */
+  #hud{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:8px 14px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  }
+  #instruction{
+    flex:1 1 320px; min-width:0;
+    font-size:clamp(18px,3.4vw,30px); font-weight:800; letter-spacing:-.01em;
+  }
+  #instruction .lang{
+    font-size:.55em; font-weight:700; vertical-align:middle;
+    color:var(--muted); border:1px solid var(--line); border-radius:6px;
+    padding:2px 6px; margin-right:8px;
+  }
+  .stats{display:flex; gap:14px; align-items:center; font-size:clamp(13px,2vw,17px); font-weight:700}
+  .stat span{color:var(--muted); font-weight:600; margin-right:4px}
+  #lives{letter-spacing:2px; color:var(--bad)}
+  #btnPause{
+    border:1px solid var(--line); background:transparent; color:var(--ink);
+    border-radius:10px; padding:6px 12px; font:inherit; font-weight:700; cursor:pointer;
+  }
+  #btnPause:hover{border-color:var(--accent)}
+
+  /* ---- Board ---- */
+  #boardWrap{flex:1; position:relative; min-height:0; display:flex; align-items:center; justify-content:center}
+  canvas{
+    background:var(--board); border:1px solid var(--line); border-radius:14px;
+    touch-action:none; max-width:100%; max-height:100%;
+  }
+
+  /* ---- Toast (explicación del fallo) ---- */
+  #toast{
+    position:absolute; left:50%; bottom:16px; transform:translateX(-50%);
+    background:var(--bad); color:#fff; font-weight:700; font-size:clamp(14px,2.4vw,20px);
+    padding:10px 18px; border-radius:12px; max-width:92%; text-align:center;
+    opacity:0; transition:opacity .18s; pointer-events:none;
+  }
+  #toast.show{opacity:1}
+
+  /* ---- Pantallas ---- */
+  .screen{
+    position:absolute; inset:0; display:none; flex-direction:column; align-items:center;
+    justify-content:center; gap:14px; text-align:center; padding:20px;
+    background:color-mix(in srgb, var(--board) 92%, transparent); border-radius:14px;
+  }
+  .screen.show{display:flex}
+  .screen h1{margin:0; font-size:clamp(24px,5vw,42px); letter-spacing:-.02em}
+  .screen h2{margin:0; font-size:clamp(20px,4vw,32px)}
+  .screen p{margin:0; color:var(--muted); max-width:56ch; line-height:1.5}
+  .btn{
+    border:none; background:var(--accent); color:#fff; font:inherit; font-weight:800;
+    font-size:clamp(16px,2.6vw,20px); padding:12px 28px; border-radius:12px; cursor:pointer;
+  }
+  .btn:hover{filter:brightness(1.08)}
+  .pickrow{display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:center}
+  .picklabel{font-weight:700; color:var(--muted); font-size:15px}
+  #levelInfo{min-height:1.4em; margin-top:-6px}
+  .langpick{display:flex; gap:8px; flex-wrap:wrap; justify-content:center}
+  .langpick button{
+    border:1px solid var(--line); background:transparent; color:var(--ink); font:inherit;
+    font-weight:700; padding:8px 16px; border-radius:10px; cursor:pointer;
+  }
+  .langpick button[aria-pressed="true"]{background:var(--accent); color:#fff; border-color:var(--accent)}
+  #mistakes{
+    list-style:none; margin:0; padding:0; max-height:34vh; overflow:auto;
+    text-align:left; font-size:15px; display:flex; flex-direction:column; gap:6px; max-width:52ch;
+  }
+  #mistakes li{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px 12px}
+  .hint{font-size:14px; color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div id="instruction">—</div>
+    <div class="stats">
+      <div class="stat"><span>Puntos</span><b id="score">0</b></div>
+      <div class="stat"><span>Nivel</span><b id="level">1</b></div>
+      <div class="stat"><span>Vidas</span><b id="lives">♥♥♥</b></div>
+      <button id="btnPause" type="button">Pausa</button>
+    </div>
+  </div>
+
+  <div id="boardWrap">
+    <canvas id="board"></canvas>
+    <div id="toast"></div>
+
+    <div class="screen show" id="screenStart">
+      <h1>🐍 Serpiente de divisibilidad</h1>
+      <p>Lee la instrucción de arriba y cómete <b>solo</b> los bloques que la cumplen.
+         Comer un número incorrecto cuesta una vida. Si sales por un borde apareces por el opuesto,
+         pero morderte la cola termina la partida.</p>
+      <div class="pickrow">
+        <span class="picklabel">Nivel inicial</span>
+        <div class="langpick" id="levelPick">
+          <button type="button" data-level="1">1</button>
+          <button type="button" data-level="2">2</button>
+          <button type="button" data-level="3">3</button>
+          <button type="button" data-level="4">4</button>
+        </div>
+      </div>
+      <p class="hint" id="levelInfo"></p>
+      <div class="pickrow">
+        <span class="picklabel">Idioma</span>
+        <div class="langpick" id="langPick">
+          <button type="button" data-lang="mix">Mezcla ES/EN</button>
+          <button type="button" data-lang="es">Solo español</button>
+          <button type="button" data-lang="en">Only English</button>
+        </div>
+      </div>
+      <button class="btn" id="btnStart" type="button">Jugar</button>
+      <p class="hint">Flechas o WASD · en tablet, desliza el dedo · Espacio para pausar</p>
+    </div>
+
+    <div class="screen" id="screenPause">
+      <h2>Pausa</h2>
+      <button class="btn" id="btnResume" type="button">Continuar</button>
+    </div>
+
+    <div class="screen" id="screenOver">
+      <h2 id="overTitle">Fin de la partida</h2>
+      <p id="overSummary"></p>
+      <ul id="mistakes"></ul>
+      <button class="btn" id="btnAgain" type="button">Jugar otra vez</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================ utilidades ============================ */
+const randInt = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+const pick    = arr => arr[Math.floor(Math.random()*arr.length)];
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
+
+function esPrimo(n){
+  if(!Number.isInteger(n) || n < 2) return false;
+  if(n % 2 === 0) return n === 2;
+  for(let d=3; d*d<=n; d+=2) if(n % d === 0) return false;
+  return true;
+}
+function menorFactor(n){
+  if(n % 2 === 0) return 2;
+  for(let d=3; d*d<=n; d+=2) if(n % d === 0) return d;
+  return n;
+}
+function mcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ [a,b]=[b,a%b]; } return a; }
+function mcm(a,b){ return Math.abs(a*b)/mcd(a,b); }
+function divisores(n){
+  const r=[];
+  for(let d=1; d*d<=n; d++) if(n%d===0){ r.push(d); if(d!==n/d) r.push(n/d); }
+  return r.sort((x,y)=>x-y);
+}
+
+/* ============================ catálogo de reglas ============================ */
+/* Cada regla: gen() -> parámetros aleatorios; test(v,p) -> ¿v cumple la regla?;
+   text.es/en(p) -> instrucción; why.es/en(v,p) -> por qué v NO la cumple.      */
+
+const CRITERIOS = [2,3,5,9,10,11];
+
+const RULES = [
+  {
+    id:'divisible', minLevel:1,
+    gen:()=>({n:pick(CRITERIOS)}),
+    test:(v,p)=> v % p.n === 0,
+    text:{ es:p=>`Número divisible entre ${p.n}`, en:p=>`Number divisible by ${p.n}` },
+    why:{  es:(v,p)=>`${v} no es divisible entre ${p.n}`, en:(v,p)=>`${v} is not divisible by ${p.n}` }
+  },
+  {
+    id:'multiplo', minLevel:1,
+    gen:()=>({n:pick([2,3,4,5,6,7,9,10,11])}),
+    test:(v,p)=> v % p.n === 0,
+    text:{ es:p=>`Múltiplo de ${p.n}`, en:p=>`Multiple of ${p.n}` },
+    why:{  es:(v,p)=>`${v} no es múltiplo de ${p.n}`, en:(v,p)=>`${v} is not a multiple of ${p.n}` }
+  },
+  {
+    id:'noMultiplo', minLevel:1,
+    gen:()=>({n:pick([2,3,4,5,6,9,10])}),
+    test:(v,p)=> v % p.n !== 0,
+    text:{ es:p=>`Que NO sea múltiplo de ${p.n}`, en:p=>`NOT a multiple of ${p.n}` },
+    why:{  es:(v,p)=>`${v} sí es múltiplo de ${p.n}`, en:(v,p)=>`${v} IS a multiple of ${p.n}` }
+  },
+  {
+    id:'primo', minLevel:2,
+    gen:()=>({}),
+    test:v=> esPrimo(v),
+    text:{ es:()=>`Número primo`, en:()=>`Prime number` },
+    why:{
+      es:v=> v===1 ? `1 no es primo ni compuesto` : `${v} no es primo: es divisible entre ${menorFactor(v)}`,
+      en:v=> v===1 ? `1 is neither prime nor composite` : `${v} is not prime: it is divisible by ${menorFactor(v)}`
+    }
+  },
+  {
+    id:'compuesto', minLevel:2,
+    gen:()=>({}),
+    test:v=> v>1 && !esPrimo(v),
+    text:{ es:()=>`Número compuesto`, en:()=>`Composite number` },
+    why:{
+      es:v=> v===1 ? `1 no es primo ni compuesto` : `${v} es primo: solo es divisible entre 1 y ${v}`,
+      en:v=> v===1 ? `1 is neither prime nor composite` : `${v} is prime: it is only divisible by 1 and ${v}`
+    }
+  },
+  {
+    id:'divisorDe', minLevel:2,
+    gen:()=>({n:pick([24,30,36,40,48,60,72])}),
+    test:(v,p)=> p.n % v === 0,
+    text:{ es:p=>`Divisor de ${p.n}`, en:p=>`Divisor of ${p.n}` },
+    why:{  es:(v,p)=>`${v} no es divisor de ${p.n}`, en:(v,p)=>`${v} is not a divisor of ${p.n}` }
+  },
+  {
+    id:'noDivisible', minLevel:3,
+    gen:()=>({n:pick([3,4,6,7,9,11])}),
+    test:(v,p)=> v % p.n !== 0,
+    text:{ es:p=>`Que NO sea divisible entre ${p.n}`, en:p=>`NOT divisible by ${p.n}` },
+    why:{  es:(v,p)=>`${v} sí es divisible entre ${p.n}`, en:(v,p)=>`${v} IS divisible by ${p.n}` }
+  },
+  {
+    id:'multiploComun', minLevel:3,
+    gen:()=>{ const a=randInt(2,9), b=randInt(2,9); return {a,b}; },
+    test:(v,p)=> v % p.a === 0 && v % p.b === 0,
+    valid:p=> p.a!==p.b && mcm(p.a,p.b) <= 90,
+    text:{ es:p=>`Múltiplo común de ${p.a} y ${p.b}`, en:p=>`Common multiple of ${p.a} and ${p.b}` },
+    why:{
+      es:(v,p)=>`${v} no es múltiplo de ${v%p.a ? p.a : p.b}`,
+      en:(v,p)=>`${v} is not a multiple of ${v%p.a ? p.a : p.b}`
+    }
+  },
+  {
+    id:'divisorComun', minLevel:3,
+    gen:()=>{ const k=pick([2,3,4,5,6]); return {a:k*randInt(2,7), b:k*randInt(2,7)}; },
+    test:(v,p)=> p.a % v === 0 && p.b % v === 0,
+    valid:p=> p.a!==p.b && mcd(p.a,p.b) > 1,
+    text:{ es:p=>`Divisor común de ${p.a} y ${p.b}`, en:p=>`Common divisor of ${p.a} and ${p.b}` },
+    why:{
+      es:(v,p)=>`${v} no es divisor de ${p.a % v ? p.a : p.b}`,
+      en:(v,p)=>`${v} is not a divisor of ${p.a % v ? p.a : p.b}`
+    }
+  },
+  {
+    id:'esMcm', minLevel:4,
+    gen:()=>{ const a=randInt(2,12), b=randInt(2,12); return {a,b}; },
+    test:(v,p)=> v === mcm(p.a,p.b),
+    valid:p=> p.a!==p.b && mcm(p.a,p.b) <= 120,
+    text:{ es:p=>`El mínimo común múltiplo (mcm) de ${p.a} y ${p.b}`, en:p=>`The lowest common multiple (LCM) of ${p.a} and ${p.b}` },
+    why:{
+      es:(v,p)=>`El mcm de ${p.a} y ${p.b} es ${mcm(p.a,p.b)}, no ${v}`,
+      en:(v,p)=>`The LCM of ${p.a} and ${p.b} is ${mcm(p.a,p.b)}, not ${v}`
+    }
+  },
+  {
+    id:'esMcd', minLevel:4,
+    gen:()=>{ const k=pick([2,3,4,5,6,8,9,12]); return {a:k*randInt(2,8), b:k*randInt(2,8)}; },
+    test:(v,p)=> v === mcd(p.a,p.b),
+    valid:p=> p.a!==p.b && mcd(p.a,p.b) > 1,
+    text:{ es:p=>`El máximo común divisor (MCD) de ${p.a} y ${p.b}`, en:p=>`The greatest common divisor (GCD) of ${p.a} and ${p.b}` },
+    why:{
+      es:(v,p)=>`El MCD de ${p.a} y ${p.b} es ${mcd(p.a,p.b)}, no ${v}`,
+      en:(v,p)=>`The GCD of ${p.a} and ${p.b} is ${mcd(p.a,p.b)}, not ${v}`
+    }
+  }
+];
+
+/* ============================ generación de rondas ============================ */
+
+const rangoMax = level => Math.min(40 + level*12, 150);
+
+// Elige una regla disponible en el nivel, con parámetros que produzcan al menos
+// un número válido y un distractor dentro del rango. Nunca repite la anterior.
+function pickRule(level, prevId){
+  const pool = RULES.filter(r => r.minLevel <= level);
+  const hi = rangoMax(level);
+  for(let intento=0; intento<200; intento++){
+    const candidatas = pool.filter(r => r.id !== prevId);
+    const rule = pick(candidatas.length ? candidatas : pool);
+    const params = rule.gen();
+    if(rule.valid && !rule.valid(params)) continue;
+    const {ok, ko} = partir(rule, params, hi);
+    if(ok.length >= 1 && ko.length >= 1) return {rule, params, ok, ko};
+  }
+  // Salvavidas: una regla que siempre funciona.
+  const rule = RULES[0], params = {n:5};
+  const {ok, ko} = partir(rule, params, hi);
+  return {rule, params, ok, ko};
+}
+
+// Parte el rango 1..hi en números que cumplen la regla y números que no.
+function partir(rule, params, hi){
+  const ok=[], ko=[];
+  for(let v=1; v<=hi; v++) (rule.test(v, params) ? ok : ko).push(v);
+  return {ok, ko};
+}
+
+// Distractores "cercanos": los que están más pegados a un número válido obligan
+// a calcular de verdad en lugar de descartar de un vistazo.
+function distractoresCercanos(ok, ko, cuantos){
+  const conDistancia = ko.map(v => {
+    let d = Infinity;
+    for(const w of ok){ const dd = Math.abs(w - v); if(dd < d) d = dd; }
+    return {v, d};
+  }).sort((a,b) => a.d - b.d);
+  const ventana = conDistancia.slice(0, Math.max(cuantos*3, 8));
+  return shuffle(ventana).slice(0, cuantos).map(o => o.v);
+}
+
+const numBloques = level => Math.min(2 + Math.floor(level/2), 6);
+
+function nuevaRonda(){
+  const {rule, params, ok, ko} = pickRule(state.level, state.rule && state.rule.id);
+  const total   = numBloques(state.level);
+  const maxOk   = Math.min(ok.length, total - 1);
+  const nOk     = Math.max(1, Math.min(maxOk, randInt(1, Math.max(1, Math.floor(total/2)))));
+  const nKo     = Math.min(ko.length, total - nOk);
+
+  const valores = [
+    ...shuffle(ok.slice()).slice(0, nOk).map(v => ({v, ok:true})),
+    ...distractoresCercanos(ok, ko, nKo).map(v => ({v, ok:false}))
+  ];
+
+  state.rule    = rule;
+  state.params  = params;
+  state.lang    = state.langMode === 'mix' ? (Math.random() < 0.5 ? 'es' : 'en') : state.langMode;
+  state.blocks  = colocar(valores);
+  pintarInstruccion();
+}
+
+// Reparte los bloques por celdas libres, lejos de la cabeza para que dé tiempo a leer.
+function colocar(valores){
+  const ocupadas = new Set(state.snake.map(s => s.x + ',' + s.y));
+  const cabeza = state.snake[0];
+  const libres = [];
+  for(let y=0; y<ROWS; y++) for(let x=0; x<COLS; x++){
+    const k = x + ',' + y;
+    if(ocupadas.has(k)) continue;
+    if(Math.abs(x - cabeza.x) + Math.abs(y - cabeza.y) < 4) continue;
+    libres.push({x,y});
+  }
+  shuffle(libres);
+  return valores.map((val, i) => ({ ...val, ...(libres[i] || {x:randInt(0,COLS-1), y:randInt(0,ROWS-1)}) }));
+}
+
+/* ============================ estado ============================ */
+const COLS = 24, ROWS = 18;
+const VIDAS = 3;
+
+const state = {
+  phase:'start',              // start | playing | paused | over
+  snake:[], dir:{x:1,y:0}, cola:[],
+  blocks:[], rule:null, params:null, lang:'es',
+  langMode: localStorage.getItem('sdd-lang') || 'mix',
+  startLevel: Number(localStorage.getItem('sdd-level')) || 1,
+  score:0, level:1, lives:VIDAS, aciertos:0, fallos:0,
+  mistakes:[], flash:null, acc:0, last:0
+};
+
+const $ = id => document.getElementById(id);
+const cv = $('board'), ctx = cv.getContext('2d');
+
+/* ============================ interfaz ============================ */
+function pintarInstruccion(){
+  const etiqueta = state.lang === 'es' ? 'ES' : 'EN';
+  const texto = state.rule.text[state.lang](state.params);
+  $('instruction').innerHTML = `<span class="lang">${etiqueta}</span>${texto}`;
+}
+function pintarHud(){
+  $('score').textContent = state.score;
+  $('level').textContent = state.level;
+  $('lives').textContent = '♥'.repeat(state.lives) + '·'.repeat(VIDAS - state.lives);
+}
+let toastId = null;
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastId);
+  toastId = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function mostrar(pantalla){
+  for(const s of document.querySelectorAll('.screen')) s.classList.remove('show');
+  if(pantalla) $(pantalla).classList.add('show');
+}
+
+/* ============================ partida ============================ */
+function nuevaPartida(){
+  state.snake = [{x:6,y:9},{x:5,y:9},{x:4,y:9}];
+  state.dir = {x:1,y:0}; state.cola = [];
+  state.score = 0; state.level = state.startLevel; state.lives = VIDAS;
+  state.aciertos = 0; state.fallos = 0; state.mistakes = [];
+  state.flash = null; state.acc = 0;
+  nuevaRonda();
+  pintarHud();
+  state.phase = 'playing';
+  mostrar(null);
+}
+
+function paso(){
+  // Dirección pendiente (evita perder pulsaciones rápidas y girar 180°).
+  while(state.cola.length){
+    const d = state.cola.shift();
+    if(d.x === -state.dir.x && d.y === -state.dir.y) continue;
+    state.dir = d; break;
+  }
+
+  // Al salir por un borde se entra por el opuesto.
+  const cabeza = {
+    x: (state.snake[0].x + state.dir.x + COLS) % COLS,
+    y: (state.snake[0].y + state.dir.y + ROWS) % ROWS
+  };
+
+  if(state.snake.some(s => s.x === cabeza.x && s.y === cabeza.y))
+    return finPartida(state.lang === 'en' ? 'You bit your own tail' : 'Te has mordido la cola');
+
+  state.snake.unshift(cabeza);
+
+  const i = state.blocks.findIndex(b => b.x === cabeza.x && b.y === cabeza.y);
+  if(i === -1){ state.snake.pop(); return; }
+
+  const bloque = state.blocks[i];
+  if(bloque.ok){
+    state.score += 10 * state.level;
+    state.aciertos++;
+    state.flash = {color:'ok', t:1};
+    if(state.aciertos % 5 === 0) state.level++;
+    nuevaRonda();
+  }else{
+    state.snake.pop();                       // no crece al fallar
+    const motivo = state.rule.why[state.lang](bloque.v, state.params);
+    state.mistakes.push({
+      instr: state.rule.text[state.lang](state.params),
+      num: bloque.v,
+      why: motivo
+    });
+    state.fallos++;
+    state.lives--;
+    state.flash = {color:'bad', t:1};
+    state.blocks.splice(i,1);
+    toast(motivo);
+    if(state.lives <= 0) return finPartida(state.lang === 'en' ? 'No lives left' : 'Te has quedado sin vidas');
+  }
+  pintarHud();
+}
+
+function finPartida(motivo){
+  state.phase = 'over';
+  const best = Math.max(state.score, Number(localStorage.getItem('sdd-best') || 0));
+  localStorage.setItem('sdd-best', best);
+
+  $('overTitle').textContent = motivo;
+  $('overSummary').textContent =
+    `Puntuación: ${state.score} · Mejor: ${best} · Nivel ${state.level} · ` +
+    `${state.aciertos} aciertos y ${state.fallos} fallos.`;
+
+  const ul = $('mistakes');
+  ul.innerHTML = '';
+  for(const m of state.mistakes.slice(-8)){
+    const li = document.createElement('li');
+    li.innerHTML = `<b>${m.instr}</b> → comiste <b>${m.num}</b>: ${m.why}`;
+    ul.appendChild(li);
+  }
+  mostrar('screenOver');
+}
+
+/* ============================ dibujo ============================ */
+let cell = 24;
+function ajustarCanvas(){
+  const wrap = $('boardWrap');
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  cell = Math.max(8, Math.floor(Math.min(w / COLS, h / ROWS)));
+  const dpr = window.devicePixelRatio || 1;
+  cv.width  = COLS * cell * dpr;
+  cv.height = ROWS * cell * dpr;
+  cv.style.width  = COLS * cell + 'px';
+  cv.style.height = ROWS * cell + 'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+function rectRedondo(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+function dibujar(){
+  const W = COLS*cell, H = ROWS*cell;
+  ctx.clearRect(0,0,W,H);
+
+  // cuadrícula
+  ctx.strokeStyle = css('--grid'); ctx.lineWidth = 1;
+  ctx.beginPath();
+  for(let x=1;x<COLS;x++){ ctx.moveTo(x*cell+.5,0); ctx.lineTo(x*cell+.5,H); }
+  for(let y=1;y<ROWS;y++){ ctx.moveTo(0,y*cell+.5); ctx.lineTo(W,y*cell+.5); }
+  ctx.stroke();
+
+  // bloques
+  const fuente = Math.max(9, Math.floor(cell * 0.5));
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for(const b of state.blocks){
+    ctx.fillStyle = css('--block');
+    rectRedondo(b.x*cell+1, b.y*cell+1, cell-2, cell-2, Math.max(3, cell*0.22));
+    ctx.fill();
+    ctx.fillStyle = css('--blockInk');
+    let f = fuente;
+    ctx.font = `800 ${f}px system-ui, sans-serif`;
+    while(ctx.measureText(String(b.v)).width > cell-8 && f > 8){
+      f--; ctx.font = `800 ${f}px system-ui, sans-serif`;
+    }
+    ctx.fillText(String(b.v), b.x*cell + cell/2, b.y*cell + cell/2 + 1);
+  }
+
+  // serpiente
+  state.snake.forEach((s,i) => {
+    ctx.fillStyle = i === 0 ? css('--head') : (i % 2 ? css('--snake') : css('--snake2'));
+    rectRedondo(s.x*cell+1, s.y*cell+1, cell-2, cell-2, Math.max(3, cell*0.3));
+    ctx.fill();
+  });
+
+  // destello de acierto / fallo
+  if(state.flash){
+    ctx.fillStyle = css(state.flash.color === 'ok' ? '--ok' : '--bad');
+    ctx.globalAlpha = state.flash.t * 0.22;
+    ctx.fillRect(0,0,W,H);
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ============================ bucle ============================ */
+const stepMs = () => Math.max(110, 230 - state.level*12);
+
+function loop(ts){
+  requestAnimationFrame(loop);
+  const dt = state.last ? ts - state.last : 0;
+  state.last = ts;
+
+  if(state.flash){
+    state.flash.t -= dt/350;
+    if(state.flash.t <= 0) state.flash = null;
+  }
+
+  if(state.phase === 'playing'){
+    state.acc += dt;
+    while(state.acc >= stepMs() && state.phase === 'playing'){
+      state.acc -= stepMs();
+      paso();
+    }
+  }
+  dibujar();
+}
+
+/* ============================ controles ============================ */
+const DIRS = {
+  ArrowUp:{x:0,y:-1}, ArrowDown:{x:0,y:1}, ArrowLeft:{x:-1,y:0}, ArrowRight:{x:1,y:0},
+  w:{x:0,y:-1}, s:{x:0,y:1}, a:{x:-1,y:0}, d:{x:1,y:0},
+  W:{x:0,y:-1}, S:{x:0,y:1}, A:{x:-1,y:0}, D:{x:1,y:0}
+};
+
+function girar(d){
+  if(state.phase !== 'playing') return;
+  const ult = state.cola.length ? state.cola[state.cola.length-1] : state.dir;
+  if(d.x === -ult.x && d.y === -ult.y) return;   // no 180°
+  if(d.x === ult.x && d.y === ult.y) return;     // sin repetidos
+  if(state.cola.length < 2) state.cola.push(d);
+}
+
+document.addEventListener('keydown', e => {
+  if(DIRS[e.key]){ e.preventDefault(); girar(DIRS[e.key]); return; }
+  if(e.key === ' ' || e.key === 'p' || e.key === 'P'){ e.preventDefault(); alternarPausa(); }
+  if(e.key === 'Enter' && (state.phase === 'start' || state.phase === 'over')) nuevaPartida();
+});
+
+function alternarPausa(){
+  if(state.phase === 'playing'){ state.phase = 'paused'; mostrar('screenPause'); }
+  else if(state.phase === 'paused'){ state.phase = 'playing'; state.acc = 0; mostrar(null); }
+}
+
+// Deslizar el dedo (tablets y móviles)
+let t0 = null;
+cv.addEventListener('touchstart', e => { t0 = e.changedTouches[0]; }, {passive:true});
+cv.addEventListener('touchend', e => {
+  if(!t0) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - t0.clientX, dy = t.clientY - t0.clientY;
+  if(Math.hypot(dx,dy) < 24) return;
+  girar(Math.abs(dx) > Math.abs(dy) ? {x:Math.sign(dx), y:0} : {x:0, y:Math.sign(dy)});
+  t0 = null;
+}, {passive:true});
+
+$('btnPause').addEventListener('click', alternarPausa);
+$('btnResume').addEventListener('click', alternarPausa);
+$('btnStart').addEventListener('click', nuevaPartida);
+$('btnAgain').addEventListener('click', nuevaPartida);
+
+function pintarLang(){
+  for(const b of document.querySelectorAll('#langPick button'))
+    b.setAttribute('aria-pressed', String(b.dataset.lang === state.langMode));
+}
+$('langPick').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  state.langMode = b.dataset.lang;
+  localStorage.setItem('sdd-lang', state.langMode);
+  pintarLang();
+});
+
+// Qué entra en juego en cada nivel inicial (el nivel sigue subiendo al jugar).
+const NIVELES = {
+  1:'Múltiplos, divisibilidad y criterios del 2, 3, 5, 9, 10 y 11.',
+  2:'Lo anterior + números primos y compuestos, y divisores de un número.',
+  3:'Lo anterior + «que NO sea divisible», múltiplos comunes y divisores comunes.',
+  4:'Lo anterior + mínimo común múltiplo (mcm) y máximo común divisor (MCD).'
+};
+function pintarNivel(){
+  for(const b of document.querySelectorAll('#levelPick button'))
+    b.setAttribute('aria-pressed', String(Number(b.dataset.level) === state.startLevel));
+  $('levelInfo').textContent = NIVELES[state.startLevel] || '';
+}
+$('levelPick').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  state.startLevel = Number(b.dataset.level);
+  localStorage.setItem('sdd-level', state.startLevel);
+  pintarNivel();
+});
+
+window.addEventListener('resize', ajustarCanvas);
+new ResizeObserver(ajustarCanvas).observe($('boardWrap'));
+
+/* ============================ pruebas (index.html?test=1) ============================ */
+function pruebas(){
+  const log = [];
+  const fallo = m => log.push('FALLO: ' + m);
+
+  // Criba de Eratóstenes independiente para contrastar esPrimo.
+  const N = 500, criba = new Array(N+1).fill(true);
+  criba[0] = criba[1] = false;
+  for(let i=2;i*i<=N;i++) if(criba[i]) for(let j=i*i;j<=N;j+=i) criba[j] = false;
+  for(let n=0;n<=N;n++) if(esPrimo(n) !== criba[n]) fallo(`esPrimo(${n})`);
+
+  // MCD y mcm contrastados con la lista de divisores / múltiplos.
+  for(let a=1;a<=60;a++) for(let b=1;b<=60;b++){
+    const dA = divisores(a), dB = new Set(divisores(b));
+    const g = Math.max(...dA.filter(d => dB.has(d)));
+    if(mcd(a,b) !== g) fallo(`mcd(${a},${b})`);
+    let m = 0; for(let k=1;k<=b;k++) if((a*k) % b === 0){ m = a*k; break; }
+    if(mcm(a,b) !== m) fallo(`mcm(${a},${b})`);
+  }
+
+  // Cada regla: la partición debe coincidir con test, y toda ronda generada
+  // debe traer al menos un bloque correcto y al menos uno incorrecto.
+  for(const rule of RULES){
+    for(let i=0;i<200;i++){
+      const p = rule.gen();
+      if(rule.valid && !rule.valid(p)) continue;
+      const hi = 150, {ok, ko} = partir(rule, p, hi);
+      if(ok.some(v => !rule.test(v,p))) fallo(`${rule.id}: ok contiene inválidos`);
+      if(ko.some(v =>  rule.test(v,p))) fallo(`${rule.id}: ko contiene válidos`);
+      if(ok.length + ko.length !== hi)  fallo(`${rule.id}: partición incompleta`);
+      for(const l of ['es','en']){
+        if(typeof rule.text[l](p) !== 'string') fallo(`${rule.id}: texto ${l}`);
+        if(ko.length && typeof rule.why[l](ko[0], p) !== 'string') fallo(`${rule.id}: motivo ${l}`);
+      }
+    }
+  }
+
+  // Rondas completas en todos los niveles.
+  state.snake = [{x:6,y:9},{x:5,y:9},{x:4,y:9}];
+  for(let level=1; level<=12; level++){
+    state.level = level;
+    for(let i=0;i<80;i++){
+      state.rule = null;
+      nuevaRonda();
+      const b = state.blocks;
+      if(b.length < 2) fallo(`nivel ${level}: solo ${b.length} bloques`);
+      if(!b.some(x => x.ok))  fallo(`nivel ${level} (${state.rule.id}): sin bloque correcto`);
+      if(!b.some(x => !x.ok)) fallo(`nivel ${level} (${state.rule.id}): sin distractor`);
+      for(const x of b) if(state.rule.test(x.v, state.params) !== x.ok)
+        fallo(`nivel ${level} (${state.rule.id}): ${x.v} mal etiquetado`);
+      const celdas = new Set(b.map(x => x.x + ',' + x.y));
+      if(celdas.size !== b.length) fallo(`nivel ${level}: bloques superpuestos`);
+    }
+  }
+
+  console.log(log.length ? log.join('\n') : '✅ Todas las pruebas pasan');
+  document.body.innerHTML =
+    `<pre style="padding:20px;font:14px ui-monospace,monospace;white-space:pre-wrap">` +
+    (log.length ? log.join('\n') : '✅ Todas las pruebas pasan') + `</pre>`;
+}
+
+/* ============================ arranque ============================ */
+ajustarCanvas();
+pintarLang();
+pintarNivel();
+state.snake = [{x:6,y:9},{x:5,y:9},{x:4,y:9}];
+state.level = state.startLevel;
+pintarHud();
+nuevaRonda();
+
+if(new URLSearchParams(location.search).get('test') === '1') pruebas();
+else requestAnimationFrame(loop);
+</script>
+</body>
+</html>

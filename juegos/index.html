@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Juegos de Juan Luis Salas</title>
+<meta name="description" content="Juegos de tablero y de clase inventados por Juan Luis Salas, para jugar en el navegador: ajedrez triangular, damas poliédricas, Conecta puntos y la serpiente de divisibilidad.">
+<style>
+:root {
+  color-scheme: light dark;
+  --fondo: #f9f9f7;
+  --tarjeta: #ffffff;
+  --texto: #0b0b0b;
+  --suave: #5b5b57;
+  --borde: #e2e2dc;
+  --enlace: #1f5fbf;
+  --boton: #1f5fbf;
+  --boton-texto: #ffffff;
+  --etiqueta: #eeeee8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #0d0d0d;
+    --tarjeta: #171717;
+    --texto: #ffffff;
+    --suave: #a8a8a2;
+    --borde: #2b2b2b;
+    --enlace: #6da7ec;
+    --boton: #6da7ec;
+    --boton-texto: #0d0d0d;
+    --etiqueta: #242424;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 40px 16px 56px; background: var(--fondo); color: var(--texto); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 900px; margin: 0 auto; }
+a { color: var(--enlace); }
+.migas { font-size: 14px; margin: 0 0 20px; }
+h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; }
+.entradilla { color: var(--suave); max-width: 62ch; margin: 0 0 32px; }
+h2 { font-size: 18px; margin: 48px 0 6px; }
+.nota-seccion { color: var(--suave); margin: 0 0 20px; max-width: 62ch; }
+.rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; }
+.juego { display: flex; flex-direction: column; background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; }
+.juego > a.captura { display: block; aspect-ratio: 8 / 5; background: #111; border-bottom: 1px solid var(--borde); }
+.juego img { display: block; width: 100%; height: 100%; object-fit: cover; transition: opacity .15s; }
+.juego > a.captura:hover img, .juego > a.captura:focus-visible img { opacity: .85; }
+.cuerpo { display: flex; flex-direction: column; flex: 1; padding: 16px 18px 18px; }
+h3 { font-size: 19px; margin: 0 0 6px; }
+.etiquetas { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
+.etiquetas li { font-size: 12.5px; padding: 2px 8px; border-radius: 999px; background: var(--etiqueta); color: var(--suave); }
+.cuerpo p { margin: 0 0 14px; }
+.acciones { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 15px; }
+.jugar { display: inline-block; padding: 7px 16px; border-radius: 8px; background: var(--boton); color: var(--boton-texto); font-weight: 600; text-decoration: none; }
+.jugar:hover, .jugar:focus-visible { filter: brightness(1.1); }
+footer { margin-top: 56px; color: var(--suave); font-size: 14px; }
+@media (max-width: 480px) {
+  body { padding-top: 28px; }
+  h1 { font-size: 26px; }
+  .rejilla { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<main>
+<p class="migas"><a href="../">← salasgar.github.io</a></p>
+
+<h1>Juegos</h1>
+<p class="entradilla">Juegos que me he inventado y he programado para jugar en el navegador, sin instalar nada: en el ordenador, en la tableta o en el móvil.</p>
+
+<div class="rejilla">
+
+<article class="juego">
+  <a class="captura" href="../Ajedrez-triangular/"><img src="img/ajedrez.webp" width="800" height="500" alt="Tablero hexagonal de triángulos con las piezas en su posición inicial" loading="lazy"></a>
+  <div class="cuerpo">
+    <h3>Ajedrez triangular</h3>
+    <ul class="etiquetas"><li>2 jugadores</li><li>contra el ordenador</li><li>problemas</li></ul>
+    <p>Ajedrez sobre un tablero de triángulos. La primera versión es de 1998; la de 2026 juega en un hexágono de 96 casillas con un elefante en la fila de atrás. Incluye otras modalidades de ajedrez triangular, un motor para jugar contra la máquina y una colección de problemas.</p>
+    <div class="acciones"><a class="jugar" href="../Ajedrez-triangular/">Jugar</a><a href="https://github.com/salasgar/Ajedrez-triangular">Código</a></div>
+  </div>
+</article>
+
+<article class="juego">
+  <a class="captura" href="../damas-poliedricas/"><img src="img/damas.webp" width="800" height="500" alt="Dodecaedro en 3D con fichas azules y naranjas en sus vértices" loading="lazy"></a>
+  <div class="cuerpo">
+    <h3>Damas poliédricas</h3>
+    <ul class="etiquetas"><li>2 a 4 jugadores</li><li>contra el ordenador</li><li>3D</li></ul>
+    <p>Damas sobre los vértices de un poliedro: las fichas avanzan por las aristas y, al comer, pueden caer en cualquier vértice libre junto a la pieza comida. Se juega en sólidos que se giran con el dedo y también en toros e hipercubos. Se gana comiendo o invadiendo el campo contrario.</p>
+    <div class="acciones"><a class="jugar" href="../damas-poliedricas/">Jugar</a><a href="https://github.com/salasgar/damas-poliedricas">Código</a></div>
+  </div>
+</article>
+
+<article class="juego">
+  <a class="captura" href="../conecta-puntos/"><img src="img/conecta.webp" width="800" height="500" alt="Cuadrícula con puntos azules y rojos unidos por líneas y casillas grises bloqueadas" loading="lazy"></a>
+  <div class="cuerpo">
+    <h3>Conecta puntos</h3>
+    <ul class="etiquetas"><li>2 a 4 jugadores</li><li>contra el ordenador</li><li>móvil y tableta</li></ul>
+    <p>En cada turno pones un punto de tu color y una casilla gris que bloquea a los demás. Los puntos vecinos se unen con una línea y gana quien forme el grupo más grande. Tiene variantes de reglas y una máquina con tres niveles.</p>
+    <div class="acciones"><a class="jugar" href="../conecta-puntos/">Jugar</a><a href="https://scratch.mit.edu/projects/423281174/">Original en Scratch</a></div>
+  </div>
+</article>
+
+<article class="juego">
+  <a class="captura" href="../serpiente-de-divisibilidad/"><img src="img/serpiente.webp" width="800" height="500" alt="Pantalla de inicio de la serpiente, con la instrucción de divisibilidad arriba" loading="lazy"></a>
+  <div class="cuerpo">
+    <h3>Serpiente de divisibilidad</h3>
+    <ul class="etiquetas"><li>1 jugador</li><li>1.º y 2.º de ESO</li><li>español e inglés</li></ul>
+    <p>Un juego de la serpiente para repasar divisibilidad: hay que comerse solo los números que cumplen la instrucción de arriba, como «Número divisible entre 5», «Número primo» o «El mínimo común múltiplo (mcm) de 6 y 8». Va subiendo de nivel y, al terminar, explica los fallos.</p>
+    <div class="acciones"><a class="jugar" href="../serpiente-de-divisibilidad/">Jugar</a></div>
+  </div>
+</article>
+
+</div>
+
+<h2>Otros juegos</h2>
+<p class="nota-seccion">Este juego no lo he inventado yo; lo he programado para jugarlo en casa.</p>
+
+<div class="rejilla">
+
+<article class="juego">
+  <a class="captura" href="../Hero-Quest/"><img src="img/heroquest.webp" width="800" height="500" alt="Portada de la aplicación de HeroQuest, con la elección de misión y de héroes" loading="lazy"></a>
+  <div class="cuerpo">
+    <h3>HeroQuest: la aplicación hace de máster</h3>
+    <ul class="etiquetas"><li>con el tablero físico</li><li>hasta 8 héroes</li></ul>
+    <p>El juego de mesa HeroQuest, de Stephen Baker (Milton Bradley y Games Workshop, 1989), se juega con el tablero y las miniaturas en la mesa. La aplicación hace de Zargon: lleva la misión, mueve a los monstruos, tira sus dados, dispara las trampas y narra la partida.</p>
+    <div class="acciones"><a class="jugar" href="../Hero-Quest/">Abrir</a><a href="https://github.com/salasgar/Hero-Quest">Código</a></div>
+  </div>
+</article>
+
+</div>
+
+<footer>Juan Luis Salas García</footer>
+</main>
+</body>
+</html>
