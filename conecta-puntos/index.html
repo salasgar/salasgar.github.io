@@ -1,10 +1,12 @@
 <!doctype html>
+<!-- Conecta puntos · © 2026 Juan Luis Salas García -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Conecta puntos</title>
 <meta name="description" content="Juego de tablero para dos o más jugadores en el mismo dispositivo: conecta tus puntos y bloquea a los demás.">
+<meta name="author" content="Juan Luis Salas García">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M9 23 21 11' stroke='%232a78d6' stroke-width='4'/%3E%3Ccircle cx='9' cy='23' r='6' fill='%232a78d6'/%3E%3Ccircle cx='21' cy='11' r='6' fill='%232a78d6'/%3E%3Ccircle cx='25' cy='25' r='5' fill='%23e34948'/%3E%3C/svg%3E">
@@ -36,10 +38,11 @@
   --acento: #2a78d6;
   --acento-fondo: #1f6ac4;   /* botones principales: texto blanco con contraste ≥ 4,5:1 */
   --acento-texto: #ffffff;
+  --enlace: var(--acento-fondo);   /* enlaces: 5,36:1 sobre blanco (§8.4) */
   --j1: #2a78d6; --j1-borde: #1b4f8f; --j1-texto: #1b4f8f;
   --j2: #e34948; --j2-borde: #8f2524; --j2-texto: #8f2524;
-  --j3: #1baf7a; --j3-borde: #0f6b4a; --j3-texto: #0f6b4a;
-  --j4: #eda100; --j4-borde: #8a5e00; --j4-texto: #8a5e00;
+  --j3: #19a371; --j3-borde: #0f6b4a; --j3-texto: #0f6b4a;
+  --j4: #c18300; --j4-borde: #8a5e00; --j4-texto: #8a5e00;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -53,12 +56,13 @@
     --borde-fuerte: #4d4d4a;
     --tablero: #161615;
     --rejilla: rgba(255, 255, 255, .55);
-    --bloqueador: #5c5c59;
+    --bloqueador: #686865;
     --velo: rgba(13, 13, 13, .8);
     --sombra: 0 8px 24px rgba(0, 0, 0, .6);
     --acento: #3987e5;
     --acento-fondo: #2a6fc4;
     --acento-texto: #ffffff;
+    --enlace: var(--acento);
     --j1: #3987e5; --j1-borde: #9cc4f5; --j1-texto: #6aa6ee;
     --j2: #e66767; --j2-borde: #f5a9a9; --j2-texto: #f08a8a;
     --j3: #199e70; --j3-borde: #8fe0c2; --j3-texto: #3cc290;
@@ -76,12 +80,13 @@
   --borde-fuerte: #4d4d4a;
   --tablero: #161615;
   --rejilla: rgba(255, 255, 255, .55);
-  --bloqueador: #5c5c59;
+  --bloqueador: #686865;
   --velo: rgba(13, 13, 13, .8);
   --sombra: 0 8px 24px rgba(0, 0, 0, .6);
   --acento: #3987e5;
   --acento-fondo: #2a6fc4;
   --acento-texto: #ffffff;
+  --enlace: var(--acento);
   --j1: #3987e5; --j1-borde: #9cc4f5; --j1-texto: #6aa6ee;
   --j2: #e66767; --j2-borde: #f5a9a9; --j2-texto: #f08a8a;
   --j3: #199e70; --j3-borde: #8fe0c2; --j3-texto: #3cc290;
@@ -143,9 +148,12 @@ body {
 }
 .logo { width: 24px; height: 24px; flex: none; }
 .ajustes { grid-area: ajustes; display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
-.acciones { grid-area: acciones; display: flex; gap: 8px; justify-content: center; }
-.acciones .boton { flex: 1 1 0; max-width: 150px; min-height: 48px; }
-.etiqueta { display: none; }
+.acciones { grid-area: acciones; display: flex; gap: 6px; justify-content: center; }
+.acciones .boton { flex: 1 1 auto; max-width: 150px; min-height: 48px; padding: 0 3px; gap: 5px; }
+/* Icono y palabra a cualquier ancho (§8.2). Si no caben, el script quita primero el icono y, si tampoco cabe la palabra, deja solo el icono. */
+.etiqueta { min-width: 0; overflow: hidden; white-space: nowrap; }
+.acciones.sin-icono .icono { display: none; }
+.acciones.solo-icono .etiqueta { display: none; }
 
 /* Una pulsación larga en el móvil no debe seleccionar texto (solo se deja en la ayuda) */
 .titulo, .marcador, .estado, .fin-tarjeta, .acciones, .ajustes { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -249,6 +257,13 @@ body {
   .ficha.activa { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color) 30%, transparent); }
 }
 .ficha .maquina-etiqueta { font-size: 12px; font-weight: 500; color: var(--texto-suave); }
+.ficha .textos { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ficha .textos { flex: 1 1 auto; }
+.ficha .prob { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+.ficha .barra { flex: 1 1 auto; min-width: 24px; height: 4px; border-radius: 2px; background: var(--borde); overflow: hidden; }
+.ficha .barra i { display: block; height: 100%; width: 0; border-radius: 2px; background: var(--color); transition: width .3s ease; }
+.ficha .pct { flex: none; min-width: 3.2em; text-align: right; font-size: 12px; font-weight: 600; line-height: 1; color: var(--texto-suave); font-variant-numeric: tabular-nums; }
+.ficha .datos {font-size: 12px; font-weight: 500; line-height: 1.25; color: var(--texto-suave); overflow-wrap: anywhere; }   /* datos de la partida (§7): puede partirse en dos líneas, nunca recorta el nombre */
 .ficha.ganadora { border-color: var(--color); }
 .ficha.rendida { opacity: .55; }
 .ficha.rendida .nombre { text-decoration: line-through; }
@@ -335,6 +350,26 @@ body {
 .linea { stroke: var(--color); stroke-width: 10; stroke-linecap: round; }
 .punto { fill: var(--color); stroke: var(--color-borde); stroke-width: 3; }
 .sombra { opacity: .35; pointer-events: none; }
+/* Última jugada (§8.1): anillo en el último punto y contorno interior en el último bloqueador, del color de quien los puso */
+.ultima { pointer-events: none; }
+.ultima-punto, .ultima-bloqueador { fill: none; stroke: var(--color); }
+.punto, .ultima-punto, .pista-marco { stroke-linejoin: round; }
+/* Formas de los jugadores en lo pequeño (§8.4): la clase con-formas la pone el script con 3 o 4 jugadores. J1 sigue siendo un círculo. */
+.con-formas .j2 .bolita { border-radius: 22%; }
+.con-formas .j3 .bolita { border-radius: 0; transform: rotate(45deg) scale(.8); }
+.con-formas .j4 .bolita { position: relative; border-radius: 0; background: var(--color-borde); box-shadow: none; transform: translateY(-7%) scale(1.2); clip-path: polygon(50% 0, 100% 86.6%, 0 86.6%); }
+.con-formas .j4 .bolita::before { content: ""; position: absolute; inset: 0; background: var(--color); clip-path: polygon(50% 21.9%, 81% 75.6%, 19% 75.6%); }
+.con-formas .j2 .punto-mini::before { border-radius: 22%; }
+.con-formas .j3 .punto-mini::before { border-radius: 0; transform: rotate(45deg) scale(.8); }
+.con-formas .j4 .punto-mini { position: relative; }
+.con-formas .j4 .punto-mini::before { position: absolute; inset: 26%; border-radius: 0; background: var(--color-borde); box-shadow: none; transform: translateY(-7%) scale(1.2); clip-path: polygon(50% 0, 100% 86.6%, 0 86.6%); width: auto; height: auto; }
+.con-formas .j4 .punto-mini::after { content: ""; position: absolute; inset: 26%; background: var(--color); transform: translateY(-7%) scale(1.2); clip-path: polygon(50% 21.9%, 81% 75.6%, 19% 75.6%); }
+.ultima .fundido { animation: aparecer-marca .15s ease-out both; }
+@keyframes aparecer-marca { from { opacity: 0; } }
+/* Pista (§7.3): contorno discontinuo del color del jugador al que le toca y su número en una esquina, sin tapar el punto */
+.pista { pointer-events: none; }
+.pista-marco { fill: none; stroke: var(--color); stroke-width: 7; stroke-dasharray: 16 11; stroke-linecap: round; }
+.pista-num { fill: var(--color-texto); font-size: 34px; font-weight: 800; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: var(--tablero); stroke-width: 5px; }
 .cursor { display: none; fill: none; stroke: var(--acento); stroke-width: 5; pointer-events: none; }
 .cursor.visible { display: block; }
 /* Animaciones breves de las piezas (las añade el script solo si no se ha pedido menos movimiento) */
@@ -373,6 +408,15 @@ body {
   pointer-events: none;
 }
 .aviso.visible { opacity: 1; }
+.aviso.largo { white-space: normal; border-radius: 14px; text-align: center; }   /* avisos de más de una línea («ya no puedes ganar») */
+
+/* Panel «Datos de la partida» (§7.3): no modal, bajo el botón de la cabecera */
+.panel-datos { position: fixed; top: 58px; right: 8px; left: auto; margin: 0; width: min(92vw, 320px); }
+.panel-datos .dialogo-contenido { padding: 14px 16px; }
+.panel-datos h2 { font-size: 17px; margin-bottom: 6px; }
+.panel-datos label { display: flex; align-items: flex-start; gap: 10px; min-height: 36px; padding: 6px 0; cursor: pointer; }
+.panel-datos input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--acento-fondo); }
+.panel-datos small { display: block; font-size: 13px; color: var(--texto-suave); }
 
 /* Panel de fin de partida, exactamente encima del tablero */
 .fin {
@@ -418,6 +462,7 @@ body {
 }
 .fin-puntos li { display: flex; align-items: center; justify-content: center; gap: 7px; }
 .fin-puntos li.ganador { font-weight: 700; }
+.fin-contador { margin: -6px 0 14px; font-size: 14px; color: var(--texto-suave); }
 .fin-botones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 
 /* Diálogos (sin relleno propio: así un clic en el fondo oscurecido es siempre fuera del cuadro) */
@@ -443,7 +488,7 @@ dialog:not([open]) { display: none; }   /* navegadores sin <dialog>: que no se v
 }
 dialog h2 { margin: 0 0 10px; font-size: 20px; }
 dialog p, dialog li { line-height: 1.45; }
-dialog a { color: var(--acento); word-break: break-all; }
+dialog a { color: var(--enlace); word-break: break-all; }
 .dialogo-botones { position: sticky; bottom: 0; display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; padding-top: 8px; background: var(--superficie); }   /* siempre a la vista aunque el cuadro se desplace */
 .campo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; }
 .campo > label, .campo > span { font-weight: 600; }
@@ -452,7 +497,12 @@ dialog a { color: var(--acento); word-break: break-all; }
 .segmentos input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
 .segmentos span { display: flex; align-items: center; justify-content: center; min-width: 46px; min-height: 42px; padding: 0 12px; font-weight: 600; }
 .segmentos label + label span { border-left: 1px solid var(--borde); }
-.segmentos input:checked + span { background: var(--acento); color: var(--acento-texto); }
+.segmentos.modos { display: grid; grid-template-columns: 1fr 1fr; }   /* cuatro modos: 2 × 2, para que quepan a 390 px */
+.segmentos.modos label span { border-left: 0; }
+.segmentos.modos label:nth-child(even) span { border-left: 1px solid var(--borde); }
+.segmentos.modos label:nth-child(n+3) span { border-top: 1px solid var(--borde); }
+.segmentos input:disabled + span { opacity: .45; cursor: not-allowed; }
+.segmentos input:checked + span { background: var(--acento-fondo); color: var(--acento-texto); }
 .segmentos input:focus-visible + span { box-shadow: inset 0 0 0 2px var(--superficie), inset 0 0 0 4px var(--texto); }   /* anillo doble: se ve sobre blanco y sobre el acento */
 .paso { display: inline-flex; align-items: center; gap: 4px; }
 .paso .boton { min-width: 44px; min-height: 44px; padding: 0; font-size: 22px; }
@@ -481,6 +531,7 @@ dialog a { color: var(--acento); word-break: break-all; }
 /* Variantes de reglas en «Nueva partida» */
 .variantes { margin: 12px 0 0; border-top: 1px solid var(--borde); padding-top: 6px; }
 .variantes summary { cursor: pointer; font-weight: 600; padding: 8px 0; }
+.copyright-pantalla { position: fixed; right: 12px; bottom: 0; margin: 0; font-size: 10px; line-height: 10px; color: var(--texto-suave); opacity: .75; pointer-events: none; }   /* aviso de autoría, discreto y siempre a la vista: cabe en los 10 px de margen inferior de .app, sin tocar ni el tablero ni los botones */
 .nota { margin: 8px 0 0; font-size: 13px; line-height: 1.4; color: var(--texto-suave); }
 select {
   box-sizing: border-box;
@@ -516,16 +567,17 @@ select {
   .titulo { font-size: 20px; }
   .logo { width: 28px; height: 28px; }
   .acciones { justify-content: flex-end; gap: 6px; }
-  .acciones .boton { flex: 0 0 auto; width: 44px; max-width: none; min-height: 44px; padding: 0; }
+  .acciones .boton { flex: 0 0 auto; width: auto; max-width: none; min-height: 44px; padding: 0 10px; gap: 6px; }
+  .acciones.solo-icono .boton { width: 44px; padding: 0; }
   .ajustes { padding-left: 12px; border-left: 1px solid var(--borde); }
   .marcador { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
   .ficha { min-width: 180px; }
   .estado { justify-self: center; min-width: min(100%, 440px); max-width: 100%; font-size: 22px; }
 }
-/* Pantallas anchas: etiquetas en las acciones y textos mayores para proyector. */
+/* Pantallas anchas: textos mayores para proyector. */
 @media (min-width: 800px) {
-  .acciones .boton { width: auto; padding: 0 12px 0 10px; }
-  .etiqueta { display: inline; }
+  .acciones .boton { padding: 0 12px 0 10px; }
+  .acciones.solo-icono .boton { padding: 0; }
   .ficha .cifra { font-size: 24px; }
   .estado { min-height: 56px; font-size: 24px; }
 }
@@ -533,6 +585,7 @@ select {
   .titulo { font-size: 22px; }
   .acciones { gap: 8px; }
   .acciones .boton { padding: 0 14px 0 12px; }
+  .acciones.solo-icono .boton { padding: 0; }
 }
 
 /* Móvil apaisado: columna de mandos a la izquierda y el tablero grande a la derecha. */
@@ -561,8 +614,8 @@ select {
   .estado-cuerpo { gap: 10px; }
   .zona { align-items: center; }
   .acciones { justify-content: stretch; gap: 8px; }
-  .acciones .boton { flex: 1 1 0; width: auto; max-width: none; min-height: 44px; padding: 0; }
-  .etiqueta { display: none; }
+  .acciones .boton { flex: 1 1 0; width: auto; max-width: none; min-height: 44px; padding: 0 4px; gap: 4px; }
+  .acciones.solo-icono .boton { padding: 0; }
 }
 /* Con sitio en la columna (desde 830 px de ancho), las fichas van de dos en dos y la columna queda más baja. */
 @media (orientation: landscape) and (max-height: 520px) and (min-width: 830px) {
@@ -575,7 +628,7 @@ select {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sacudida, .aparece, .cifra.sube, .fin-tarjeta { animation: none; }
+  .sacudida, .aparece, .cifra.sube, .fin-tarjeta, .ultima .fundido { animation: none; }
   .traza { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; }
   .aviso { transition: none; }
 }
@@ -587,7 +640,9 @@ select {
   <symbol id="i-deshacer" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
   <symbol id="i-rehacer" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
   <symbol id="i-rendirse" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h13l-3 4.5 3 4.5H5"/></symbol>
-  <symbol id="i-sonido" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></symbol>
+  <symbol id="i-pista" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></symbol>
+  <symbol id="i-datos"viewBox="0 0 24 24"><path d="M5 20v-7M12 20V5M19 20v-10"/></symbol>
+  <symbol id="i-sonido"viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></symbol>
   <symbol id="i-silencio" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m23 9-6 6M17 9l6 6"/></symbol>
   <symbol id="i-ayuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
   <symbol id="i-tema-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></symbol>
@@ -604,6 +659,7 @@ select {
   </h1>
 
   <div class="ajustes">
+    <button type="button" class="boton" id="datos" aria-label="Datos de la partida" aria-expanded="false" aria-controls="dialogo-datos" title="Datos de la partida"><svg class="icono" aria-hidden="true"><use href="#i-datos"/></svg></button>
     <button type="button" class="boton" id="sonido" aria-pressed="true" aria-label="Sonido" title="Silenciar"><svg class="icono" aria-hidden="true"><use href="#i-sonido"/></svg></button>
     <button type="button" class="boton" id="ayuda" aria-label="Ayuda: cómo se juega" title="Cómo se juega"><svg class="icono" aria-hidden="true"><use href="#i-ayuda"/></svg></button>
     <button type="button" class="boton" id="tema" aria-label="Tema automático. Cambiar tema" title="Tema: automático"><svg class="icono" aria-hidden="true"><use href="#i-tema-auto"/></svg></button>
@@ -633,8 +689,10 @@ select {
           <h2 id="titulo-fin" tabindex="-1">Fin de la partida</h2>
           <p class="fin-resultado" id="fin-resultado"></p>
           <ul class="fin-puntos" id="fin-puntos"></ul>
+          <p class="fin-contador" id="fin-contador" hidden></p>
           <div class="fin-botones">
-            <button type="button" class="boton principal" id="fin-nueva">Nueva partida</button>
+            <button type="button" class="boton principal" id="revancha">Revancha</button>
+            <button type="button" class="boton" id="fin-nueva">Nueva partida</button>
             <button type="button" class="boton" id="ver-tablero">Ver tablero</button>
           </div>
         </div>
@@ -643,12 +701,15 @@ select {
   </div>
 
   <div class="acciones">
-    <button type="button" class="boton" id="nueva" aria-label="Nueva partida" title="Nueva partida"><svg class="icono" aria-hidden="true"><use href="#i-nueva"/></svg><span class="etiqueta">Nueva partida</span></button>
+    <button type="button" class="boton" id="nueva" aria-label="Nueva partida" title="Nueva partida"><svg class="icono" aria-hidden="true"><use href="#i-nueva"/></svg><span class="etiqueta">Nueva</span></button>
     <button type="button" class="boton" id="deshacer" aria-label="Deshacer" title="Deshacer (Ctrl+Z)"><svg class="icono" aria-hidden="true"><use href="#i-deshacer"/></svg><span class="etiqueta">Deshacer</span></button>
     <button type="button" class="boton" id="rehacer" aria-label="Rehacer" title="Rehacer (Ctrl+Mayús+Z)"><svg class="icono" aria-hidden="true"><use href="#i-rehacer"/></svg><span class="etiqueta">Rehacer</span></button>
     <button type="button" class="boton" id="rendirse" aria-label="Rendirse" title="Rendirse"><svg class="icono" aria-hidden="true"><use href="#i-rendirse"/></svg><span class="etiqueta">Rendirse</span></button>
+    <button type="button" class="boton" id="pista" aria-label="Pista" title="Pista: marca la mejor jugada que ve la máquina" hidden><svg class="icono" aria-hidden="true"><use href="#i-pista"/></svg><span class="etiqueta">Pista</span></button>
   </div>
+  <div class="oculto-visual" id="anuncio" role="status" aria-live="polite"></div>
 </div>
+<p class="copyright-pantalla">© 2026 Juan Luis Salas García</p>
 
 <dialog id="dialogo-nueva" aria-labelledby="titulo-nueva">
   <form id="form-nueva" method="dialog" class="dialogo-contenido">
@@ -672,11 +733,15 @@ select {
         </div>
         <div class="campo nivel" hidden>
           <span id="nivel-1">Nivel</span>
-          <div class="segmentos" role="radiogroup" aria-labelledby="quien-1 nivel-1">
-            <label><input type="radio" name="nivel1" value="facil"><span>Fácil</span></label>
-            <label><input type="radio" name="nivel1" value="medio" checked><span>Medio</span></label>
-            <label><input type="radio" name="nivel1" value="dificil"><span>Difícil</span></label>
-          </div>
+          <select name="nivel1" aria-labelledby="quien-1 nivel-1">
+            <option value="principiante">Principiante</option>
+            <option value="muyfacil">Muy fácil</option>
+            <option value="facil">Fácil</option>
+            <option value="medio" selected>Medio</option>
+            <option value="dificil">Difícil</option>
+            <option value="muydificil">Muy difícil</option>
+            <option value="experto">Experto</option>
+          </select>
         </div>
       </div>
       <div class="quien j2" data-jugador="2">
@@ -689,11 +754,15 @@ select {
         </div>
         <div class="campo nivel" hidden>
           <span id="nivel-2">Nivel</span>
-          <div class="segmentos" role="radiogroup" aria-labelledby="quien-2 nivel-2">
-            <label><input type="radio" name="nivel2" value="facil"><span>Fácil</span></label>
-            <label><input type="radio" name="nivel2" value="medio" checked><span>Medio</span></label>
-            <label><input type="radio" name="nivel2" value="dificil"><span>Difícil</span></label>
-          </div>
+          <select name="nivel2" aria-labelledby="quien-2 nivel-2">
+            <option value="principiante">Principiante</option>
+            <option value="muyfacil">Muy fácil</option>
+            <option value="facil">Fácil</option>
+            <option value="medio" selected>Medio</option>
+            <option value="dificil">Difícil</option>
+            <option value="muydificil">Muy difícil</option>
+            <option value="experto">Experto</option>
+          </select>
         </div>
       </div>
       <div class="quien j3" data-jugador="3">
@@ -706,11 +775,15 @@ select {
         </div>
         <div class="campo nivel" hidden>
           <span id="nivel-3">Nivel</span>
-          <div class="segmentos" role="radiogroup" aria-labelledby="quien-3 nivel-3">
-            <label><input type="radio" name="nivel3" value="facil"><span>Fácil</span></label>
-            <label><input type="radio" name="nivel3" value="medio" checked><span>Medio</span></label>
-            <label><input type="radio" name="nivel3" value="dificil"><span>Difícil</span></label>
-          </div>
+          <select name="nivel3" aria-labelledby="quien-3 nivel-3">
+            <option value="principiante">Principiante</option>
+            <option value="muyfacil">Muy fácil</option>
+            <option value="facil">Fácil</option>
+            <option value="medio" selected>Medio</option>
+            <option value="dificil">Difícil</option>
+            <option value="muydificil">Muy difícil</option>
+            <option value="experto">Experto</option>
+          </select>
         </div>
       </div>
       <div class="quien j4" data-jugador="4">
@@ -723,11 +796,15 @@ select {
         </div>
         <div class="campo nivel" hidden>
           <span id="nivel-4">Nivel</span>
-          <div class="segmentos" role="radiogroup" aria-labelledby="quien-4 nivel-4">
-            <label><input type="radio" name="nivel4" value="facil"><span>Fácil</span></label>
-            <label><input type="radio" name="nivel4" value="medio" checked><span>Medio</span></label>
-            <label><input type="radio" name="nivel4" value="dificil"><span>Difícil</span></label>
-          </div>
+          <select name="nivel4" aria-labelledby="quien-4 nivel-4">
+            <option value="principiante">Principiante</option>
+            <option value="muyfacil">Muy fácil</option>
+            <option value="facil">Fácil</option>
+            <option value="medio" selected>Medio</option>
+            <option value="dificil">Difícil</option>
+            <option value="muydificil">Muy difícil</option>
+            <option value="experto">Experto</option>
+          </select>
         </div>
       </div>
     </div>
@@ -747,6 +824,16 @@ select {
         <button type="button" class="boton" data-campo="op-filas" data-paso="1" aria-label="Más filas">+</button>
       </div>
     </div>
+    <div class="campo" role="radiogroup" aria-labelledby="etiqueta-modo">
+      <span id="etiqueta-modo">Modo</span>
+      <div class="segmentos modos">
+        <label><input type="radio" name="modo" value="clasico" checked><span>Clásico</span></label>
+        <label><input type="radio" name="modo" value="equilibrado"><span>Equilibrado</span></label>
+        <label><input type="radio" name="modo" value="competir"><span>Para competir</span></label>
+        <label><input type="radio" name="modo" value="personalizado" aria-disabled="true"><span>Personalizado</span></label>
+      </div>
+    </div>
+    <p class="nota" id="nota-modo"></p>
     <div class="campo" role="radiogroup" aria-labelledby="etiqueta-bloqueadores">
       <span id="etiqueta-bloqueadores">Bloqueadores</span>
       <div class="segmentos">
@@ -781,6 +868,14 @@ select {
           <option value="n2+m2">n² + m²</option>
         </select>
       </div>
+      <div class="campo" role="radiogroup" aria-labelledby="etiqueta-desempate">
+        <span id="etiqueta-desempate">Si hay empate</span>
+        <div class="segmentos">
+          <label><input type="radio" name="desempate" value="ninguno" checked><span>Empate</span></label>
+          <label><input type="radio" name="desempate" value="segundo"><span>Gana el segundo</span></label>
+        </div>
+      </div>
+      <p class="nota">Gana el segundo: si empatáis, gana el que no empezó. Solo con 2 jugadores.</p>
       <p class="nota">n = puntos del grupo, m = conexiones entre ellos. Con cruces prohibidos, una línea no se traza si cruzaría una línea de otro color ya trazada.</p>
     </details>
     <div class="dialogo-botones">
@@ -812,6 +907,17 @@ select {
   </div>
 </dialog>
 
+<dialog id="dialogo-datos" class="panel-datos" aria-labelledby="titulo-datos">
+  <div class="dialogo-contenido">
+    <h2 id="titulo-datos">Datos de la partida</h2>
+    <label><input type="checkbox" data-dato="vacias"><span>Casillas vacías</span></label>
+    <label><input type="checkbox" data-dato="restantes"><span>Puntos por poner</span></label>
+    <label><input type="checkbox" data-dato="maximo"><span>Máximo alcanzable<small>y aviso de “ya no puede ganar”</small></span></label>
+    <label><input type="checkbox" data-dato="probabilidad"><span>Probabilidad de ganar</span></label>
+    <label><input type="checkbox" data-dato="pista"><span>Botón “Pista”</span></label>
+  </div>
+</dialog>
+
 <dialog id="dialogo-ayuda" aria-labelledby="titulo-ayuda">
   <div class="dialogo-contenido">
     <h2 id="titulo-ayuda" tabindex="-1">Cómo se juega</h2>
@@ -824,10 +930,16 @@ select {
     </ul>
     <p>Variante «sin bloqueadores»: cada turno es solo poner un punto.</p>
     <p>Más variantes, en «Nueva partida» → «Variantes del juego»: si una línea puede cruzar a otra de distinto color; si cuenta solo el grupo mayor o la suma de todos los grupos; y cuánto vale un grupo de n puntos y m conexiones (n, m, n + m, n², m² o n² + m²).</p>
-    <p>También puedes jugar contra la máquina: en «Nueva partida» elige «Máquina» para el jugador que quieras y su nivel (fácil, medio o difícil).</p>
+    <p><strong>Modos de juego</strong> (en «Nueva partida» → «Modo»): <strong>Clásico</strong>, las reglas de siempre. <strong>Equilibrado</strong>: sin bloqueadores; cada línea vale un punto y gana quien tenga el grupo con más líneas. Es el más igualado, también con 3 o 4 jugadores. <strong>Para competir</strong> (solo con 2 jugadores): las reglas de siempre, pero si empatáis gana el que no empezó; así, empezar da menos ventaja.</p>
+    <p><strong>Si hay empate</strong> (en «Variantes del juego», solo con 2 jugadores): con «Gana el segundo», un empate lo gana el jugador que no empezó la partida.</p>
+    <p>Con 3 o 4 jugadores, cada uno tiene además su forma: círculo, cuadrado, rombo y triángulo.</p>
+    <p>También puedes jugar contra la máquina: en «Nueva partida» elige «Máquina» para el jugador que quieras y su nivel, de «Principiante» a «Experto».</p>
     <p>Si no quieres seguir, pulsa «Rendirse» en tu turno: quedas fuera (tus puntos se quedan en el tablero, pero ya no puedes ganar) y los demás continúan; si solo queda un jugador, gana. Puedes deshacerlo.</p>
+    <p><strong>Datos de la partida</strong> (botón «Datos»): puedes mostrar las casillas vacías; los puntos que le quedan por poner a cada jugador; y el <strong>máximo</strong> («máx.»), que es lo más que podría llegar a tener cada jugador si los demás le dejaran todo el sitio posible (si es menor que los puntos que ya tiene otro, ya no puede ganar, salvo que se rinda quien va por delante); y la <strong>probabilidad de ganar</strong>, que la app estima jugando 100 partidas de prueba desde la posición actual, como si todos jugaran como la máquina en modo rápido. Es una estimación: al principio marca cerca del 50 % y contra alguien que juega raro se equivoca. Con las variantes que cuentan conexiones (m), o con la suma de grupos de valor n², el máximo no se calcula («máx. —»).</p>
+    <p><strong>Pista:</strong> marca la mejor jugada que ve la máquina; si hay dos o tres casi igual de buenas, las marca todas, numeradas de mejor a peor. Puedes hacerle caso o jugar donde quieras.</p>
     <p>Con teclado: flechas para moverte por el tablero, Enter o espacio para poner la pieza, y Ctrl+Z (⌘Z en Mac) para deshacer.</p>
     <p>Juego original en Scratch: <a href="https://scratch.mit.edu/projects/423281174/" target="_blank" rel="noopener">https://scratch.mit.edu/projects/423281174/</a></p>
+    <p class="nota copyright">© 2026 Juan Luis Salas García</p>
     <div class="dialogo-botones">
       <button type="button" class="boton principal" id="cerrar-ayuda">Cerrar</button>
     </div>
@@ -864,15 +976,18 @@ class Partida {
   #aristas;      // Map clave → jugador; clave = «índice menor-índice mayor», con índice = fila * columnas + columna
   #adyacencia;   // Map índice → Set de índices conectados por una arista
 
-  constructor({ columnas = 10, filas = 7, jugadores = 2, bloqueadores = true, cruces = 'permitidos', puntuacion = 'mayor', valor = 'n' } = {}) {
+  constructor({ columnas = 10, filas = 7, jugadores = 2, bloqueadores = true, cruces = 'permitidos', puntuacion = 'mayor', valor = 'n', empieza = 1, desempate = 'ninguno' } = {}) {
     if (!enteroEntre(columnas, 2, 30) || !enteroEntre(filas, 2, 30)) throw new RangeError('columnas y filas deben ser enteros entre 2 y 30');
     if (!enteroEntre(jugadores, 2, 6)) throw new RangeError('jugadores debe ser un entero entre 2 y 6');
+    if (!enteroEntre(empieza, 1, jugadores)) throw new RangeError('empieza debe ser un entero entre 1 y jugadores');
+    if (desempate !== 'ninguno' && desempate !== 'segundo') throw new RangeError("desempate debe ser uno de: ninguno, segundo");
+    if (desempate === 'segundo' && jugadores !== 2) throw new RangeError("el desempate «segundo» solo vale con 2 jugadores");
     for (const [regla, valorRegla] of Object.entries({ cruces, puntuacion, valor })) {
       if (!REGLAS[regla].includes(valorRegla)) throw new RangeError(`${regla} debe ser uno de: ${REGLAS[regla].join(', ')}`);
     }
-    this.#opciones = { columnas, filas, jugadores, bloqueadores: Boolean(bloqueadores), cruces, puntuacion, valor };
+    this.#opciones = { columnas, filas, jugadores, bloqueadores: Boolean(bloqueadores), cruces, puntuacion, valor, empieza, desempate };
     this.#tablero = Array.from({ length: filas }, () => new Array(columnas).fill(0));
-    this.#jugador = 1;
+    this.#jugador = empieza;
     this.#accion = 'marcar';
     this.#vacias = columnas * filas;
     this.#puntuaciones = new Array(jugadores).fill(0);
@@ -904,8 +1019,9 @@ class Partida {
   get columnas() { return this.#opciones.columnas; }
   get filas() { return this.#opciones.filas; }
   get jugadores() { return this.#opciones.jugadores; }
+  get empieza() { return this.#opciones.empieza; }
   get bloqueadores() { return this.#opciones.bloqueadores; }
-  get reglas() { const { cruces, puntuacion, valor } = this.#opciones; return { cruces, puntuacion, valor }; }
+  get reglas() { const { cruces, puntuacion, valor, desempate } = this.#opciones; return { cruces, puntuacion, valor, desempate }; }
   get tablero() { return this.#tablero; }
   get jugador() { return this.#jugador; }
   get accion() { return this.#accion; }
@@ -919,7 +1035,10 @@ class Partida {
     if (!this.terminada) return [];
     const quedan = this.#puntuaciones.flatMap((p, i) => (this.#fuera.has(i + 1) ? [] : [{ j: i + 1, p }]));
     const maximo = Math.max(...quedan.map(q => q.p));
-    return quedan.filter(q => q.p === maximo).map(q => q.j);
+    const empatados = quedan.filter(q => q.p === maximo).map(q => q.j);
+    // Desempate para el segundo (§9.1): con los dos sin rendirse y empatados, gana el que no empezó.
+    if (this.#opciones.desempate === 'segundo' && empatados.length === 2) return [this.empieza % 2 + 1];
+    return empatados;
   }
   get jugadas() { return this.#jugadas.map(Partida.#sinAristas); }
   get puedeDeshacer() { return this.#jugadas.length > 0; }
@@ -1112,6 +1231,9 @@ class Partida {
     return JSON.stringify({ v: 1, opciones: this.#opciones, jugadas: this.#jugadas.map(Partida.#sinAristas), rehacer: this.#rehacer.map(Partida.#sinAristas) });
   }
 
+  // Datos de la partida (§7): { vacias, jugadores: [{ restantes, maximo, perdido }, …] }. No muta la partida.
+  estadisticas() { return estadisticas(this); }
+
   // Reconstruye la partida repitiendo el historial, lo que de paso lo valida (y vuelve a formar las aristas).
   static deserializar(texto) {
     const d = JSON.parse(texto);
@@ -1131,22 +1253,102 @@ class Partida {
   }
 }
 
+// ---------- datos de la partida (§7) ----------
+// Puntos que le quedan por poner a cada jugador si la partida sigue hasta llenar el tablero (§7.1).
+// Devuelve un array con un entero por jugador (índice = jugador − 1).
+function puntosRestantes(partida) {
+  const J = partida.jugadores, resto = new Array(J).fill(0);
+  if (partida.terminada) return resto;
+  const fuera = new Set(partida.rendidos), bloqueadores = partida.bloqueadores;
+  let v = partida.vacias, j = partida.jugador, a = partida.accion;
+  while (v > 0) {
+    if (a === 'marcar') { resto[j - 1]++; v--; a = bloqueadores ? 'bloquear' : 'pasar'; }
+    else if (a === 'bloquear') { v--; a = 'pasar'; }
+    if (a === 'pasar') { do { j = j % J + 1; } while (fuera.has(j)); a = 'marcar'; }
+  }
+  return resto;
+}
+
+// Cota superior de la puntuación final de cada jugador (§7.1): `null` donde no se calcula (variantes con m).
+// `resto` = puntosRestantes(partida), para no recalcularlo.
+function cotasMaximas(partida, resto = puntosRestantes(partida)) {
+  const J = partida.jugadores, actual = partida.puntuaciones, { puntuacion, valor } = partida.reglas;
+  const fuera = new Set(partida.rendidos);
+  const cotas = new Array(J);
+  const mayor = puntuacion === 'mayor' && (valor === 'n' || valor === 'n2');
+  const suma = puntuacion === 'suma' && valor === 'n';
+  const C = partida.columnas, F = partida.filas, t = partida.tablero;
+  for (let p = 1; p <= J; p++) {
+    const k = resto[p - 1], hoy = actual[p - 1];
+    if (fuera.has(p) || partida.terminada || k === 0) { cotas[p - 1] = hoy; continue; }
+    if (suma) { // ahí es exacta, salvo rendiciones: puntos en el tablero + los que le quedan por poner
+      let propios = 0;
+      for (let f = 0; f < F; f++) for (let c = 0; c < C; c++) if (t[f][c] === p) propios++;
+      cotas[p - 1] = Math.max(hoy, propios + k);
+      continue;
+    }
+    if (!mayor) { cotas[p - 1] = null; continue; }
+    // para cada componente conexa (vecindad de 8) de «puntos de p ∪ vacías»: min(|C|, propios en C + k)
+    const visto = Array.from({ length: F }, () => new Uint8Array(C));
+    let mejor = 0;
+    for (let f0 = 0; f0 < F; f0++) for (let c0 = 0; c0 < C; c0++) {
+      if (visto[f0][c0] || !(t[f0][c0] === 0 || t[f0][c0] === p)) continue;
+      let tam = 0, propios = 0; const pila = [[c0, f0]]; visto[f0][c0] = 1;
+      while (pila.length) {
+        const [x, y] = pila.pop(); tam++; if (t[y][x] === p) propios++;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx, ny = y + dy;
+          if ((dx || dy) && nx >= 0 && ny >= 0 && nx < C && ny < F && !visto[ny][nx] && (t[ny][nx] === 0 || t[ny][nx] === p)) { visto[ny][nx] = 1; pila.push([nx, ny]); }
+        }
+      }
+      mejor = Math.max(mejor, Math.min(tam, propios + k));
+    }
+    const cota = valor === 'n2' ? mejor * mejor : mejor;
+    cotas[p - 1] = Math.max(cota, hoy);
+  }
+  return cotas;
+}
+
+// { vacias, jugadores: [{ restantes, maximo, perdido }, …] } (§7.2). No muta la partida.
+function estadisticas(partida) {
+  const J = partida.jugadores, resto = puntosRestantes(partida), cotas = cotasMaximas(partida, resto);
+  const fuera = new Set(partida.rendidos), actual = partida.puntuaciones, ganadores = partida.ganadores;
+  const jugadores = [];
+  for (let p = 1; p <= J; p++) {
+    let perdido;
+    if (partida.terminada) perdido = !ganadores.includes(p);
+    else if (fuera.has(p)) perdido = true;
+    else if (cotas[p - 1] === null) perdido = null;
+    else {
+      perdido = false;
+      // Con el desempate para el segundo, el que empezó pierde también los empates (§9.1).
+      const empatePierde = partida.reglas.desempate === 'segundo' && p === partida.empieza;
+      for (let q = 1; q <= J; q++) if (q !== p && !fuera.has(q) && (empatePierde ? cotas[p - 1] <= actual[q - 1] : cotas[p - 1] < actual[q - 1])) { perdido = true; break; }
+    }
+    jugadores.push({ restantes: resto[p - 1], maximo: cotas[p - 1], perdido });
+  }
+  return { vacias: partida.vacias, jugadores };
+}
+
 // ---------- oponente automático ----------
 // Máquina (oponente automático) de «Conecta puntos», enfoque Monte Carlo.
-// Niveles: facil (heurística de crecimiento con mucho ruido), medio (heurística codiciosa de crecer y estorbar,
-// a profundidad 1) y dificil (búsqueda Monte Carlo en árbol: UCB1 con ensanchamiento progresivo, ordenación de
+// Siete niveles (ver PERFILES):
+// principiante, muyfacil y facil (heurística de crecimiento con mucho ruido y jugadas al azar), medio (heurística
+// codiciosa de crecer y estorbar, a profundidad 1, con algo de ruido para no repetir siempre la misma jugada) y
+// dificil, muydificil y experto (búsqueda Monte Carlo en árbol: UCB1 con ensanchamiento progresivo, ordenación de
 // jugadas por la heurística y partidas de prueba rápidas guiadas por ella; presupuesto de trabajo y corte por tiempo).
 // Trabaja sobre una representación propia y plana del tablero (Int8Array) con grupos por union-find, que reproduce
 // las reglas de Partida: aristas explícitas, cruces prohibidos, valor de grupo y puntuación «mayor» o «suma».
 
 const DIRECCIONES = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
-const NIVELES = ['facil', 'medio', 'dificil'];
+const NIVELES = ['principiante', 'muyfacil', 'facil', 'medio', 'dificil', 'muydificil', 'experto'];
 const MARCAR = 0, BLOQUEAR = 1;
 
 const UNIDADES_POR_MS = 1200;  // casillas evaluadas por ms de tiempoMaximo (en este Mac llena ~1/3 del tope; en un móvil manda el reloj)
 const COSTE_ITERACION = 24;    // trabajo fijo que se apunta por iteración (copiar el estado, recorrer el árbol)
 const HORIZONTE = 160;         // jugadas simuladas como mucho por partida de prueba (en tableros grandes se corta y se mira quién va ganando)
-const MUESTRA = 16;            // casillas que mira la política rápida en cada jugada simulada
+const MUESTRA = 8;             // casillas que mira la política rápida en cada jugada simulada (con 8 en vez de 16 caben más
+                               // partidas de prueba en el mismo presupuesto, y la búsqueda juega mejor: tarea 18)
 const EPSILON = 0.1;           // probabilidad de jugada al azar en las partidas de prueba
 const RUIDO_SIMULACION = 0.6;  // ruido (en puntos) de la política rápida, para que las partidas de prueba varíen
 const RUIDO_ORDEN = 0.2;       // ruido al ordenar las jugadas de un nodo del árbol
@@ -1157,6 +1359,14 @@ const MARGEN = 0.3, ESCALA = 2; // peso de la diferencia de puntos en el resulta
 const PESO_LIBERTAD = 0.15;    // valor de cada casilla vacía alrededor (sitio para crecer)
 const PESO_PROPIO = 0.5;       // al bloquear, penalización por taparme una casilla buena para mí
 const RUIDO_FACIL = 1.5, AZAR_FACIL = 0.25; // nivel fácil: ruido en puntos y probabilidad de jugar al azar
+const RUIDO_MEDIO = 0.5;       // nivel medio: ruido en puntos (elige entre las casillas casi tan buenas como la mejor)
+const RIVAL_AZAR = 0.5;        // con 3 o más jugadores, «el rival» se sortea con probabilidad ∝ sus puntos + RIVAL_AZAR
+// Con puntuación «mayor», la heurística (subidas de puntos, margen de las partidas de prueba) mide los grupos en una
+// escala fija por familia de fórmulas: n² como n, m² como m, n² + m² como n + m. Con «mayor», n y n² son el mismo juego
+// (elevar al cuadrado no cambia quién tiene más) y la máquina elige igual en los dos; sin esto, los pesos fijos
+// (PESO_LIBERTAD, los ruidos, ESCALA) contaban menos con números grandes y el medio cambiaba de fuerza (tarea 23).
+// Con «suma», la escala es la de la fórmula: son juegos distintos. Ganar o perder se decide siempre con los puntos de verdad.
+const ESCALA_MAYOR = { 'n': 'n', 'n2': 'n', 'm': 'm', 'm2': 'm', 'n+m': 'n+m', 'n2+m2': 'n+m' };
 
 // --- Geometría por tamaño de tablero (se calcula una vez por tamaño) ---
 const geometrias = new Map();
@@ -1194,8 +1404,11 @@ class Estado {
     this.bloqueadores = bloqueadores;
     this.prohibidos = reglas.cruces === 'prohibidos';
     this.suma = reglas.puntuacion === 'suma';
-    const formula = reglas.valor;
+    this.segundo = reglas.desempate === 'segundo'; // desempate para el segundo (§9.1): con 2 jugadores, el empate en cabeza lo gana quien no empezó
+    this.empieza = 1;                              // quién empezó la partida (lo pone desdePartida); solo cuenta con el desempate
+    const formula = reglas.valor, formulaH = this.suma ? formula : ESCALA_MAYOR[formula];
     this.valor = (n, m) => Partida.valorGrupo(n, m, formula);
+    this.valorH = (n, m) => Partida.valorGrupo(n, m, formulaH); // valor de un grupo en la escala de la heurística
     this.pesoAmenaza = bloqueadores ? 0.4 : 0.8; // al marcar, cuánto vale quitarle al rival su casilla (sin bloqueadores es la única manera)
     this.tab = new Int8Array(N);                 // 0 vacía, -1 bloqueada, j punto del jugador j
     this.padre = new Int16Array(N);              // union-find de los puntos; en la raíz, tam (puntos) y ari (aristas) del grupo
@@ -1206,6 +1419,7 @@ class Estado {
     this.pos = new Int16Array(N);
     this.vacias = 0;
     this.puntos = new Float64Array(jugadores + 1); // puntuación de cada jugador (índice 1..jugadores)
+    this.mayorH = new Float64Array(jugadores + 1); // con «mayor», su mayor grupo en la escala de la heurística (con «suma», sin uso)
     this.fuera = new Uint8Array(jugadores + 1);    // 1 si el jugador se ha rendido (no juega ni puede ganar)
     this.jugador = 1;
     this.accion = MARCAR;
@@ -1223,6 +1437,7 @@ class Estado {
       const r = g.casillas[0][1] * C + g.casillas[0][0];
       for (const [c, f] of g.casillas) e.padre[f * C + c] = r;
       e.tam[r] = g.casillas.length; e.ari[r] = g.aristas;
+      if (!e.suma) e.mayorH[g.jugador] = Math.max(e.mayorH[g.jugador], e.valorH(g.casillas.length, g.aristas));
     }
     if (e.prohibidos) for (const { jugador, a, b } of p.lineas()) {
       if (a[0] === b[0] || a[1] === b[1]) continue; // solo las diagonales pueden cruzarse
@@ -1230,21 +1445,36 @@ class Estado {
     }
     p.puntuaciones.forEach((x, k) => { e.puntos[k + 1] = x; });
     for (const q of p.rendidos) e.fuera[q] = 1;
-    e.jugador = p.jugador; e.accion = p.accion === 'marcar' ? MARCAR : BLOQUEAR;
+    e.jugador = p.jugador; e.accion = p.accion === 'marcar' ? MARCAR : BLOQUEAR; e.empieza = p.empieza;
     return e;
   }
 
   copiar() {
     const e = Object.create(Estado.prototype);
     Object.assign(e, this);
-    for (const campo of ['tab', 'padre', 'tam', 'ari', 'diag', 'vac', 'pos', 'puntos']) e[campo] = this[campo].slice();
+    for (const campo of ['tab', 'padre', 'tam', 'ari', 'diag', 'vac', 'pos', 'puntos', 'mayorH']) e[campo] = this[campo].slice();
     return e;
   }
 
   raiz(i) { const padre = this.padre; while (padre[i] !== i) { padre[i] = padre[padre[i]]; i = padre[i]; } return i; }
   quitarVacia(i) { const k = this.pos[i], u = this.vac[--this.vacias]; this.vac[k] = u; this.pos[u] = k; }
-  // El rival (que no se haya rendido) que más puntos lleva (frente a él se mide crecer y estorbar).
-  rival(j) { let r = 0, mejor = -1; for (let q = 1; q <= this.jugadores; q++) if (q !== j && !this.fuera[q] && this.puntos[q] > mejor) { mejor = this.puntos[q]; r = q; } return r; }
+  // El rival (que no se haya rendido) frente al que se mide crecer y estorbar. Con 3 o más jugadores, uno al azar con
+  // probabilidad proporcional a sus puntos + RIVAL_AZAR: si siempre fuera el que más puntos lleva, todas las máquinas
+  // estorbarían al mismo jugador y el que juega detrás de ellas crecería sin estorbo (sesgo de asiento, tareas 06 y 18).
+  // Con 2 jugadores, el otro; sin `rnd`, el que más puntos lleva (a igualdad, el primero que juega después de j).
+  // Los puntos del sorteo, en la escala de la heurística (con «mayor», la de ESCALA_MAYOR).
+  rival(j, rnd) {
+    if (rnd && this.jugadores > 2) {
+      const h = this.suma ? this.puntos : this.mayorH;
+      let total = 0;
+      for (let q = 1; q <= this.jugadores; q++) if (q !== j && !this.fuera[q]) total += h[q] + RIVAL_AZAR;
+      let x = rnd() * total;
+      for (let q = 1; q <= this.jugadores; q++) if (q !== j && !this.fuera[q]) { x -= h[q] + RIVAL_AZAR; if (x < 0) return q; }
+    }
+    let r = 0, mejor = -1;
+    for (let k = 1; k < this.jugadores; k++) { const q = (j - 1 + k) % this.jugadores + 1; if (!this.fuera[q] && this.puntos[q] > mejor) { mejor = this.puntos[q]; r = q; } }
+    return r;
+  }
 
   // Pone el punto del jugador j en la casilla vacía i: forma las aristas que tocan y actualiza grupos y puntuación.
   poner(i, j) {
@@ -1271,7 +1501,10 @@ class Estado {
       }
       if (this.suma) this.puntos[j] += this.valor(tam[ri], ari[ri]);
     }
-    if (!this.suma) this.puntos[j] = Math.max(this.puntos[j], this.valor(tam[ri], ari[ri]));
+    if (!this.suma) {
+      this.puntos[j] = Math.max(this.puntos[j], this.valor(tam[ri], ari[ri]));
+      this.mayorH[j] = Math.max(this.mayorH[j], this.valorH(tam[ri], ari[ri]));
+    }
   }
 
   // Aplica la acción que toca en la casilla vacía i y pasa el turno cuando corresponde.
@@ -1297,19 +1530,20 @@ class Estado {
       if (t !== j && t !== r) continue;
       if (this.prohibidos && diagonal[base + d] >= 0) { const o = this.diag[diagonal[base + d] ^ 1]; if (o !== 0 && o !== t) continue; }
       const ra = this.raiz(k);
-      if (t === j) { mJ++; if (!contiene(raicesJ, kJ, ra)) { raicesJ[kJ++] = ra; nJ += tam[ra]; mJ += ari[ra]; viejoJ += this.valor(tam[ra], ari[ra]); } }
-      else { mR++; if (!contiene(raicesR, kR, ra)) { raicesR[kR++] = ra; nR += tam[ra]; mR += ari[ra]; viejoR += this.valor(tam[ra], ari[ra]); } }
+      if (t === j) { mJ++; if (!contiene(raicesJ, kJ, ra)) { raicesJ[kJ++] = ra; nJ += tam[ra]; mJ += ari[ra]; viejoJ += this.valorH(tam[ra], ari[ra]); } }
+      else { mR++; if (!contiene(raicesR, kR, ra)) { raicesR[kR++] = ra; nR += tam[ra]; mR += ari[ra]; viejoR += this.valorH(tam[ra], ari[ra]); } }
     }
     medida[0] = this.ganancia(j, nJ, mJ, viejoJ);
     medida[1] = this.ganancia(r, nR, mR, viejoR);
     medida[2] = lib;
   }
   // Subida de puntuación del jugador j al formar un grupo de n puntos y m aristas a partir de grupos que valían `viejo`.
-  ganancia(j, n, m, viejo) { const v = this.valor(n, m); return this.suma ? v - viejo : Math.max(0, v - this.puntos[j]); }
+  // (en la escala de la heurística: con «mayor», la de ESCALA_MAYOR).
+  ganancia(j, n, m, viejo) { const v = this.valorH(n, m); return this.suma ? v - viejo : Math.max(0, v - this.mayorH[j]); }
 }
 
 // --- Heurística ligera: crecer, quitarle sitio al rival y tener donde seguir ---
-let trabajo = 0; // casillas evaluadas en la búsqueda en curso (presupuesto del nivel difícil)
+let trabajo = 0; // casillas evaluadas en la búsqueda en curso (presupuesto de los niveles de búsqueda)
 
 function valorCasilla(est, i, j, r) {
   est.evaluar(i, j, r);
@@ -1320,7 +1554,7 @@ function valorCasilla(est, i, j, r) {
 
 // Ordena de mejor a peor hasta `maximo` casillas vacías (si hay más, una muestra sin repetición) con ruido uniforme de amplitud `ruido`.
 function candidatos(est, rnd, ruido, maximo) {
-  const V = est.vacias, vac = est.vac, pos = est.pos, n = Math.min(V, maximo), j = est.jugador, r = est.rival(j);
+  const V = est.vacias, vac = est.vac, pos = est.pos, n = Math.min(V, maximo), j = est.jugador, r = est.rival(j, rnd);
   const valores = new Float64Array(n), orden = new Array(n);
   for (let k = 0; k < n; k++) {
     if (n < V) { // barajado parcial de la lista de vacías (el orden de la lista no significa nada)
@@ -1335,11 +1569,28 @@ function candidatos(est, rnd, ruido, maximo) {
   return orden.map(k => vac[k]);
 }
 
+// --- Niveles ---
+// Cada nivel es un perfil. Los de heurística miran una sola jugada: con probabilidad `azar` juegan una casilla al azar
+// y si no, la mejor según la heurística con ruido uniforme de amplitud `ruido`; `amenaza` multiplica lo que vale, al
+// marcar, quitarle la casilla al rival (0: solo piensa en crecer). Los de búsqueda (`busqueda: true`) usan el árbol
+// Monte Carlo, todos con las mismas constantes: cambia el tiempo y si reutilizan el árbol de la jugada anterior
+// (`reutilizar`). `tiempo` es el tiempoMaximo por defecto en ms (uno explícito en las opciones manda). La escala está
+// medida en herramientas/maquinas-concurso/E/resultados.md.
+const PERFILES = {
+  principiante: { tiempo: 250, azar: AZAR_FACIL, ruido: RUIDO_FACIL, amenaza: 0 },
+  muyfacil:     { tiempo: 250, azar: 0.05, ruido: RUIDO_FACIL, amenaza: 0.4 },
+  facil:        { tiempo: 250, azar: 0.08, ruido: 0.7, amenaza: 1 },
+  medio:        { tiempo: 250, azar: 0, ruido: RUIDO_MEDIO, amenaza: 1 },
+  dificil:      { tiempo: 75, busqueda: true },
+  muydificil:   { tiempo: 300, busqueda: true },
+  experto:      { tiempo: 1000, busqueda: true, reutilizar: true },
+};
+
 // Política de las partidas de prueba: la mejor casilla de una muestra según la heurística, con ruido y algo de azar.
 function jugadaRapida(est, rnd) {
   const V = est.vacias, vac = est.vac;
   if (rnd() < EPSILON) return vac[Math.floor(rnd() * V)];
-  const j = est.jugador, r = est.rival(j), n = Math.min(V, MUESTRA);
+  const j = est.jugador, r = est.rival(j, rnd), n = Math.min(V, MUESTRA);
   let mejor = -Infinity, celda = -1;
   for (let k = 0; k < n; k++) {
     const i = V <= MUESTRA ? vac[k] : vac[Math.floor(rnd() * V)];
@@ -1354,35 +1605,64 @@ function simular(est, rnd) {
   for (let paso = 0; est.vacias > 0 && paso < HORIZONTE; paso++) est.jugar(jugadaRapida(est, rnd));
 }
 
-// Resultado de una posición final (o del horizonte) para cada jugador: 1 gana, 0,5 empata, 0 pierde, más un margen
-// acotado según la diferencia con el mejor de los demás.
+// Resultado de una posición final (o del horizonte) para cada jugador: 1 gana, 0,5 empata, 0 pierde (con los puntos de
+// verdad), más un margen acotado según la diferencia con el mejor de los demás (en la escala de la heurística).
 function resultados(est) {
-  const J = est.jugadores, p = est.puntos, v = new Float64Array(J + 1);
-  let max1 = -Infinity, max2 = -Infinity, empatados = 0;
-  for (let q = 1; q <= J; q++) {
-    if (est.fuera[q]) continue;
-    if (p[q] > max1) { max2 = max1; max1 = p[q]; empatados = 1; } else if (p[q] === max1) empatados++; else if (p[q] > max2) max2 = p[q];
-  }
+  const J = est.jugadores, p = est.puntos, h = est.suma ? p : est.mayorH, v = new Float64Array(J + 1);
   for (let q = 1; q <= J; q++) {
     if (est.fuera[q]) continue;   // quien se ha rendido ya no puede ganar
-    const dif = p[q] - (p[q] === max1 && empatados === 1 ? max2 : max1);
-    v[q] = (dif > 0 ? 1 : dif === 0 ? 0.5 : 0) + MARGEN * dif / (Math.abs(dif) + ESCALA);
+    let otro = 0;                 // el mejor de los demás
+    for (let k = 1; k <= J; k++) if (k !== q && !est.fuera[k] && (otro === 0 || p[k] > p[otro])) otro = k;
+    const dif = otro ? p[q] - p[otro] : 0, difH = otro ? h[q] - h[otro] : 0;
+    // Con el desempate para el segundo, un empate en cabeza es 1 para el que no empezó y 0 para el que empezó (§9.1).
+    const empate = est.segundo && otro ? (q === est.empieza ? 0 : 1) : 0.5;
+    v[q] = (dif > 0 ? 1 : dif === 0 ? empate : 0) + MARGEN * difH / (Math.abs(difH) + ESCALA);
   }
   return v;
 }
 
-// --- Nivel difícil: búsqueda Monte Carlo en árbol ---
-function nodo(celda, movio) { return { celda, movio, visitas: 0, suma: 0, cands: null, hijos: [] }; }
+// --- Niveles de búsqueda: Monte Carlo en árbol ---
+// Cada nodo guarda, al ordenar sus jugadas, quién juega en él y qué acción (`quien`, `accion`): así se puede bajar
+// por el árbol siguiendo las jugadas hechas desde la búsqueda anterior (ver bajar).
+function nodo(celda, movio) { return { celda, movio, visitas: 0, suma: 0, cands: null, hijos: [], quien: 0, accion: 0 }; }
 
-function buscar(est0, rnd, presupuesto, limite) {
-  const raiz = nodo(-1, 0), camino = [];
+// Nodo del árbol anterior que corresponde a la posición actual, o null. Las casillas que estaban vacías y ya no lo
+// están son las jugadas hechas desde entonces (la propia y las de los rivales); se baja por el árbol eligiendo en cada
+// nodo el hijo que hizo una de ellas con la acción que tocaba. Si algo no cuadra (una casilla vaciada al deshacer,
+// alguien que se ha rendido, una jugada que el árbol no llegó a abrir), se empieza de cero.
+function bajar({ est: e0, raiz }, est) {
+  if (e0.geo !== est.geo || e0.jugadores !== est.jugadores) return null;
+  for (let q = 1; q <= est.jugadores; q++) if (e0.fuera[q] !== est.fuera[q]) return null;
+  const quedan = new Set();
+  for (let k = 0; k < est.geo.N; k++) if (e0.tab[k] !== est.tab[k]) { if (e0.tab[k] !== 0) return null; quedan.add(k); }
+  if (quedan.size === 0) return null;
+  let n = raiz;
+  while (quedan.size) {
+    if (!n.cands) return null;
+    const objetivo = n.accion === MARCAR ? n.quien : -1;
+    let sig = null;
+    for (const h of n.hijos) if (quedan.has(h.celda) && est.tab[h.celda] === objetivo) { sig = h; break; }
+    if (!sig) return null;
+    quedan.delete(sig.celda); n = sig;
+  }
+  if (n.cands && (n.quien !== est.jugador || n.accion !== est.accion)) return null;
+  return n.visitas > 0 ? n : null;
+}
+
+// Busca desde `raiz0` (un nodo heredado de la búsqueda anterior, con sus visitas) o desde un árbol nuevo.
+// Deja en `ultimaRaiz` el nodo raíz usado, para que la siguiente búsqueda pueda heredar de él.
+// Devuelve la raíz del árbol: sus hijos son las jugadas probadas (con visitas y suma), `cands` las candidatas en orden heurístico.
+let ultimaRaiz = null;
+function buscarRaiz(est0, rnd, presupuesto, limite, raiz0 = null) {
+  const raiz = raiz0 || nodo(-1, 0), camino = [];
+  ultimaRaiz = raiz;
   trabajo = 0;
   while (trabajo < presupuesto && performance.now() < limite) {
     const est = est0.copiar();
     let n = raiz;
     camino.length = 0;
     while (est.vacias > 0) {
-      if (!n.cands) n.cands = candidatos(est, rnd, RUIDO_ORDEN, CANDIDATOS_NODO);
+      if (!n.cands) { n.cands = candidatos(est, rnd, RUIDO_ORDEN, CANDIDATOS_NODO); n.quien = est.jugador; n.accion = est.accion; }
       const permitidos = Math.min(n.cands.length, 1 + Math.floor(ANCHURA * Math.pow(n.visitas, CRECIMIENTO)));
       if (n.hijos.length < permitidos) {             // ensanchar: el siguiente candidato en orden heurístico
         const hijo = nodo(n.cands[n.hijos.length], est.jugador);
@@ -1404,6 +1684,10 @@ function buscar(est0, rnd, presupuesto, limite) {
     trabajo += COSTE_ITERACION;
   }
   if (!raiz.cands) raiz.cands = candidatos(est0, rnd, RUIDO_ORDEN, est0.vacias);
+  return raiz;
+}
+function buscar(est0, rnd, presupuesto, limite, raiz0 = null) {
+  const raiz = buscarRaiz(est0, rnd, presupuesto, limite, raiz0);
   let mejor = null; // el hijo más visitado (en caso de empate, el de mejor media)
   for (const h of raiz.hijos) if (!mejor || h.visitas > mejor.visitas || (h.visitas === mejor.visitas && h.suma > mejor.suma)) mejor = h;
   return mejor ? mejor.celda : raiz.cands[0];
@@ -1414,24 +1698,70 @@ class Maquina {
     if (!NIVELES.includes(nivel)) throw new RangeError('nivel desconocido: ' + nivel);
     this._nivel = nivel;
     this._aleatorio = opciones.aleatorio || Math.random;
-    this._tiempoMaximo = opciones.tiempoMaximo ?? 250;
+    this._tiempoMaximo = opciones.tiempoMaximo ?? PERFILES[nivel].tiempo;
   }
   get nivel() { return this._nivel; }
 
   elegir(partida) {
     if (partida.terminada) return null;
-    const inicio = performance.now(), rnd = this._aleatorio, est = Estado.desdePartida(partida);
+    const inicio = performance.now(), rnd = this._aleatorio, est = Estado.desdePartida(partida), perfil = PERFILES[this._nivel];
     let celda;
-    if (this._nivel === 'facil') {
-      est.pesoAmenaza = 0; // solo piensa en crecer (y en estorbar al bloquear), con mucho ruido
-      celda = rnd() < AZAR_FACIL ? est.vac[Math.floor(rnd() * est.vacias)] : candidatos(est, rnd, RUIDO_FACIL, est.vacias)[0];
-    } else if (this._nivel === 'medio') {
-      celda = candidatos(est, rnd, 1e-3, est.vacias)[0];
+    if (perfil.busqueda) {
+      const raiz0 = perfil.reutilizar && this._previo ? bajar(this._previo, est) : null;
+      celda = buscar(est, rnd, this._tiempoMaximo * UNIDADES_POR_MS, inicio + this._tiempoMaximo * 0.8, raiz0);
+      if (perfil.reutilizar) this._previo = { est, raiz: ultimaRaiz };
     } else {
-      celda = buscar(est, rnd, this._tiempoMaximo * UNIDADES_POR_MS, inicio + this._tiempoMaximo * 0.8);
+      est.pesoAmenaza *= perfil.amenaza; // con 0, solo piensa en crecer (y en estorbar al bloquear)
+      celda = perfil.azar > 0 && rnd() < perfil.azar ? est.vac[Math.floor(rnd() * est.vacias)] : candidatos(est, rnd, perfil.ruido, est.vacias)[0];
     }
     return { columna: celda % est.geo.C, fila: Math.floor(celda / est.geo.C) };
   }
+
+  // Pista (§7.2): entre 1 y `maximo` casillas, [{ columna, fila, visitas, valor }, …], ya recortadas con Maquina.destacadas; [] si terminó.
+  // Con un nivel que no busca (de 'principiante' a 'medio') devuelve la jugada de `elegir` sola, con visitas y valor null.
+  sugerir(partida, maximo = 3) {
+    if (partida.terminada) return [];
+    if (!PERFILES[this._nivel].busqueda) return [{ ...this.elegir(partida), visitas: null, valor: null }];
+    return sugerirDesdeRaiz(partida, maximo, this._aleatorio, this._tiempoMaximo);
+  }
+  // Probabilidad de ganar de cada jugador (§7.1) según N partidas de prueba; null si la partida terminó.
+  static estimar(partida, { partidas = 100, aleatorio = Math.random } = {}) { return probabilidadDeGanar(partida, partidas, aleatorio); }
+  // Cuántas sugerencias se muestran (regla ρ = 2 de §7.1); `visitas` de mayor a menor.
+  static destacadas(visitas, maximo = 3) {
+    const v1 = visitas[0] ?? 0, v2 = visitas[1] ?? 0, v3 = visitas[2] ?? 0;
+    if (maximo <= 1 || v1 >= 2 * v2) return 1;
+    if (maximo <= 2 || v2 >= 2 * v3) return 2;
+    return 3;
+  }
+  // El nivel con búsqueda más fuerte cuyo tiempoMaximo por defecto no pasa de 300 ms (§7, decisión 9).
+  static get NIVEL_PISTA() { return 'muydificil'; }
+}
+
+function probabilidadDeGanar(partida, partidas, aleatorio) {
+  if (partida.terminada) return null;
+  const J = partida.jugadores, est = Estado.desdePartida(partida), w = new Float64Array(J + 1);
+  const eligible = new Uint8Array(J + 1);
+  partida.estadisticas().jugadores.forEach((d, i) => { eligible[i + 1] = (est.fuera[i + 1] || d.perdido === true) ? 0 : 1; });
+  for (let n = 0; n < partidas; n++) {
+    const e = est.copiar(); simular(e, aleatorio);
+    let mejor = -Infinity, empatados = 0;
+    for (let q = 1; q <= J; q++) if (eligible[q]) { if (e.puntos[q] > mejor) { mejor = e.puntos[q]; empatados = 1; } else if (e.puntos[q] === mejor) empatados++; }
+    // Con el desempate para el segundo, el empate en cabeza es una victoria entera del que no empezó (§9.1).
+    if (est.segundo && empatados === 2 && eligible[1] && eligible[2] && e.puntos[1] === mejor && e.puntos[2] === mejor) w[est.empieza % 2 + 1] += 1;
+    else for (let q = 1; q <= J; q++) if (eligible[q] && e.puntos[q] === mejor) w[q] += 1 / empatados;
+  }
+  return Array.from({ length: J }, (_, i) => w[i + 1] / partidas);
+}
+
+// Los hijos de la raíz de la búsqueda del nivel difícil, por visitas (empate: mayor suma), recortados con Maquina.destacadas.
+function sugerirDesdeRaiz(partida, maximo, aleatorio, tiempoMaximo) {
+  const inicio = performance.now(), est = Estado.desdePartida(partida), C = est.geo.C;
+  const raiz = buscarRaiz(est, aleatorio, tiempoMaximo * UNIDADES_POR_MS, inicio + tiempoMaximo * 0.8);
+  const posicion = celda => ({ columna: celda % C, fila: Math.floor(celda / C) });
+  if (!raiz.hijos.length) return [{ ...posicion(raiz.cands[0]), visitas: null, valor: null }];
+  const hijos = raiz.hijos.slice().sort((a, b) => b.visitas - a.visitas || b.suma - a.suma).slice(0, maximo);
+  const cuantas = Math.min(Maquina.destacadas(hijos.map(h => h.visitas), maximo), hijos.length);
+  return hijos.slice(0, cuantas).map(h => ({ ...posicion(h.celda), visitas: h.visitas, valor: h.suma / h.visitas }));
 }
 </script>
 
@@ -1444,13 +1774,28 @@ const RADIO = 22;             // radio del punto (diámetro ≈ 0,44 del lado)
 const LADO_MAXIMO = 120;      // píxeles por casilla, como mucho
 const RETRASO_FIN = 600;      // ms antes de tapar el tablero al acabar, para ver la última jugada
 const DEMO = [[2, 2], [7, 1], [6, 3], [3, 2], [3, 3], [5, 3], [6, 4], [4, 4], [2, 3], [7, 4], [5, 5], [1, 2], [1, 4], [6, 5], [7, 2], [0, 5], [0, 3], [8, 3], [8, 1], [1, 3]];
-const CLAVE = { partida: 'conecta-puntos.partida', opciones: 'conecta-puntos.opciones', tema: 'conecta-puntos.tema', sonido: 'conecta-puntos.sonido' };
+const CLAVE = { partida: 'conecta-puntos.partida', opciones: 'conecta-puntos.opciones', tema: 'conecta-puntos.tema', sonido: 'conecta-puntos.sonido', datos: 'conecta-puntos.datos', contador: 'conecta-puntos.contador' };
+const DATOS = ['vacias', 'restantes', 'maximo', 'probabilidad', 'pista'];   // datos de la partida que se pueden mostrar (§7); todos apagados por defecto
+const datosTodos = new URLSearchParams(location.search).get('datos') === 'todos';   // ?datos=todos: los enciende sin guardar nada (pruebas y capturas)
 const LIMITES = { jugadores: [2, 4], columnas: [4, 16], filas: [4, 16] };
-const OPCIONES_DEFECTO = { jugadores: 2, columnas: 10, filas: 7, bloqueadores: true, cruces: 'permitidos', puntuacion: 'mayor', valor: 'n', tipos: ['persona', 'persona', 'persona', 'persona'], niveles: ['medio', 'medio', 'medio', 'medio'] };
+const OPCIONES_DEFECTO = { jugadores: 2, columnas: 10, filas: 7, bloqueadores: true, cruces: 'permitidos', puntuacion: 'mayor', valor: 'n', desempate: 'ninguno', tipos: ['persona', 'persona', 'persona', 'persona'], niveles: ['medio', 'medio', 'medio', 'medio'] };
 const REGLAS_UI = { cruces: ['permitidos', 'prohibidos'], puntuacion: ['mayor', 'suma'], valor: ['n', 'm', 'n+m', 'n2', 'm2', 'n2+m2'] };
+// Modos de juego (§9.2): se deducen de las reglas, no se guardan. El orden es el del selector.
+const MODOS = {
+  clasico:     { bloqueadores: true,  cruces: 'permitidos', puntuacion: 'mayor', valor: 'n', desempate: 'ninguno' },
+  equilibrado: { bloqueadores: false, cruces: 'permitidos', puntuacion: 'mayor', valor: 'm', desempate: 'ninguno' },
+  competir:    { bloqueadores: true,  cruces: 'permitidos', puntuacion: 'mayor', valor: 'n', desempate: 'segundo' },
+};
+const NOTA_MODO = {
+  clasico: 'Las reglas del juego original.',
+  equilibrado: 'Sin bloqueadores. Cada línea vale un punto: gana el grupo con más líneas.',
+  competir: 'Las reglas de siempre, pero si empatáis gana el que no empezó.',
+  personalizado: 'Reglas elegidas en «Variantes del juego».',
+};
+const modoDe = r => Object.keys(MODOS).find(k => Object.keys(MODOS[k]).every(c => MODOS[k][c] === r[c])) || 'personalizado';
 const NOMBRE_VALOR = { 'n': 'n', 'm': 'm', 'n+m': 'n + m', 'n2': 'n²', 'm2': 'm²', 'n2+m2': 'n² + m²' };
 const FONDO = { light: '#f9f9f7', dark: '#0d0d0d' };   // para <meta name="theme-color">
-const NIVELES_MAQUINA = ['facil', 'medio', 'dificil'];
+const NIVELES_MAQUINA = ['principiante', 'muyfacil', 'facil', 'medio', 'dificil', 'muydificil', 'experto'];
 const RETRASO_MAQUINA = { marcar: 600, bloquear: 500 };   // ms de pausa antes de cada acción de la máquina, para que se vea la jugada anterior
 
 const demo = new URLSearchParams(location.search).get('demo');   // null si no hay ?demo=
@@ -1460,12 +1805,16 @@ const $ = id => document.getElementById(id);
 const el = {
   svg: $('svg'), zona: $('zona'), tablero: $('tablero'), marcador: $('marcador'),
   estado: $('estado'), estadoPieza: $('estado-pieza'), estadoTexto: $('estado-texto'), estadoVariante: $('estado-variante'), verResultado: $('ver-resultado'), continuar: $('continuar'), variantes: $('variantes'), quienes: $('quienes'),
-  aviso: $('aviso'), fin: $('fin'), finResultado: $('fin-resultado'), finPuntos: $('fin-puntos'),
+  aviso: $('aviso'), fin: $('fin'), finResultado: $('fin-resultado'), finPuntos: $('fin-puntos'), finContador: $('fin-contador'), acciones: document.querySelector('.acciones'),
+  datos: $('datos'), dialogoDatos: $('dialogo-datos'), pista: $('pista'), anuncio: $('anuncio'),
   deshacer: $('deshacer'), rehacer: $('rehacer'), rendirse: $('rendirse'), dialogoRendirse: $('dialogo-rendirse'), sonido: $('sonido'), tema: $('tema'),
   dialogoNueva: $('dialogo-nueva'), formNueva: $('form-nueva'), dialogoConfirmar: $('dialogo-confirmar'), dialogoAyuda: $('dialogo-ayuda'),
 };
 
 let partida;                   // la Partida en curso
+let datos;                     // qué datos de la partida se muestran: { vacias, restantes, maximo, probabilidad, pista } (booleanos)
+let perdidasAvisadas = new Set();   // jugadores a los que ya se les ha dicho en esta partida que no pueden ganar
+let sinAvisarPerdidas = false; // mientras se monta una partida (nueva o restaurada) solo se anota quién está perdido, sin avisar
 let opciones;                  // últimas opciones elegidas en «Nueva partida»
 let capas;                     // grupos del SVG que se repintan en cada jugada
 let finOculto = false;         // el usuario ha cerrado el panel de fin con «Ver tablero»
@@ -1485,6 +1834,7 @@ const todasMaquinas = () => tipos.slice(0, partida.jugadores).every(t => t === '
 // persona aún no ha jugado, retirar la apertura solo haría que la máquina abriera otra vez, en otro sitio.
 const puedeDeshacerAhora = () => partida.puedeDeshacer && (todasMaquinas() || partida.jugadas.some(j => !esMaquina(j.jugador)));
 const nombreJugador = j => `Jugador ${j}${esMaquina(j) ? ' (máquina)' : ''}`;
+const nombreCorto = j => `Jugador ${j}`;   // sin «(máquina)»: para el aviso de la revancha y el contador
 
 // ---------- almacenamiento (siempre protegido; en modo demo no se guarda nada) ----------
 function leer(clave) {
@@ -1498,6 +1848,7 @@ function guardar(clave, valor) {
 }
 function acotar(valor, minimo, maximo) { return Math.min(maximo, Math.max(minimo, valor)); }
 function normalizarOpciones(o) {
+  if (o.puntuacion === 'suma' && o.valor === 'n') o = { ...o, valor: 'n2' };   // «suma · n» ya no se ofrece (§9.2)
   const entero = (v, [minimo, maximo], defecto) => {
     const n = Math.round(Number(v));
     return Number.isFinite(n) ? acotar(n, minimo, maximo) : defecto;
@@ -1510,18 +1861,40 @@ function normalizarOpciones(o) {
     cruces: REGLAS_UI.cruces.includes(o.cruces) ? o.cruces : OPCIONES_DEFECTO.cruces,
     puntuacion: REGLAS_UI.puntuacion.includes(o.puntuacion) ? o.puntuacion : OPCIONES_DEFECTO.puntuacion,
     valor: REGLAS_UI.valor.includes(o.valor) ? o.valor : OPCIONES_DEFECTO.valor,
+    desempate: o.desempate === 'segundo' ? 'segundo' : 'ninguno',
     tipos: Array.from({ length: 4 }, (_, i) => (Array.isArray(o.tipos) && o.tipos[i] === 'maquina' ? 'maquina' : 'persona')),
     niveles: Array.from({ length: 4 }, (_, i) => (Array.isArray(o.niveles) && NIVELES_MAQUINA.includes(o.niveles[i]) ? o.niveles[i] : 'medio')),
   };
 }
+// Datos de la partida (§7.3): cualquier valor que no sea `true` (clave que falta, campo ausente o no booleano) es apagado.
+function normalizarDatos(d) {
+  const o = d && typeof d === 'object' ? d : {};
+  return Object.fromEntries(DATOS.map(clave => [clave, datosTodos || o[clave] === true]));
+}
+function leerDatos() {
+  let guardados = null;
+  try { guardados = JSON.parse(leer(CLAVE.datos)); } catch { /* sin datos guardados */ }
+  return normalizarDatos(guardados);
+}
 // Texto corto de las reglas que se apartan de las de siempre ('' si son las de siempre).
-function descripcionReglas({ cruces, puntuacion, valor }) {
+function descripcionReglas({ cruces, puntuacion, valor, desempate }) {
   const partes = [];
   if (cruces === 'prohibidos') partes.push('sin cruces');
   if (puntuacion === 'suma') partes.push('suma de grupos');
   if (valor !== 'n') partes.push(`valor ${NOMBRE_VALOR[valor]}`);
+  if (desempate === 'segundo') partes.push('desempate para el segundo');
   return partes.join(' · ');
 }
+// Línea de variante (§9.2): el nombre del modo si las reglas de la partida son las de un modo; si no, la lista de reglas.
+function textoVariante() {
+  const modo = modoDe({ ...partida.reglas, bloqueadores: partida.bloqueadores });
+  if (modo === 'clasico') return '';
+  if (modo === 'equilibrado') return 'Modo equilibrado';
+  if (modo === 'competir') return 'Modo para competir';
+  return descripcionReglas(partida.reglas);
+}
+// Las opciones de la partida para el motor: el desempate solo existe con 2 jugadores (§9.2).
+const opcionesDeMotor = o => ({ ...o, desempate: o.jugadores === 2 ? o.desempate : 'ninguno' });
 function leerOpciones() {
   let guardadas = null;
   try { guardadas = JSON.parse(leer(CLAVE.opciones)); } catch { /* sin opciones guardadas */ }
@@ -1620,6 +1993,18 @@ el.tema.addEventListener('click', () => {
 // ---------- tablero ----------
 const claseJugador = j => `j${(j - 1) % 4 + 1}`;
 const centro = (c, f) => [(c + 0.5) * U, (f + 0.5) * U];
+// Formas por jugador (§8.4): con 3 o 4 jugadores, J1 círculo, J2 cuadrado, J3 rombo y J4 triángulo; con 2, círculos. Todas con el área del círculo de radio RADIO.
+const FORMAS = ['circulo', 'cuadrado', 'rombo', 'triangulo'];
+const formaDe = j => (partida.jugadores >= 3 ? (j - 1) % 4 : 0);
+const num = n => Math.round(n * 100) / 100;
+// Pieza de un jugador centrada en (x, y); `k` la agranda (el anillo de la última jugada y el contorno de la pista) conservando la forma.
+function pieza(j, x, y, clase, atributos = '', k = 1) {
+  const r = RADIO * k, forma = formaDe(j), comun = `class="${clase} forma-${FORMAS[forma]}" ${atributos}`;
+  if (forma === 1) { const l = 1.77 * r; return `<rect ${comun} x="${num(x - l / 2)}" y="${num(y - l / 2)}" width="${num(l)}" height="${num(l)}" rx="${num(0.15 * l)}"/>`; }
+  if (forma === 2) { const d = 1.77 * r / Math.SQRT2; return `<polygon ${comun} points="${num(x)},${num(y - d)} ${num(x + d)},${num(y)} ${num(x)},${num(y + d)} ${num(x - d)},${num(y)}"/>`; }
+  if (forma === 3) { const a = 1.345 * r, arriba = y - 1.553 * r, abajo = y + 0.776 * r; return `<polygon ${comun} points="${num(x)},${num(arriba)} ${num(x + a)},${num(abajo)} ${num(x - a)},${num(abajo)}"/>`; }
+  return `<circle ${comun} cx="${num(x)}" cy="${num(y)}" r="${num(r)}"/>`;
+}
 const mismaCasilla = (a, b) => a === b || Boolean(a && b && a[0] === b[0] && a[1] === b[1]);
 
 // Construye las capas fijas del SVG (fondo y rejilla) para la partida actual.
@@ -1635,20 +2020,58 @@ function montarTablero() {
     `<rect class="fondo" width="${ancho}" height="${alto}"/>` +
     `<g id="capa-bloqueadores"></g>` +
     `<path class="rejilla" d="${rejilla}" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>` +
-    `<g id="capa-lineas"></g><g id="capa-puntos"></g>` +
-    `<g id="capa-sombra" class="sombra"></g>` +
+    `<g id="capa-lineas"></g><g id="capa-puntos"></g><g id="capa-ultima" class="ultima"></g>` +
+    `<g id="capa-sombra" class="sombra"></g><g id="capa-pista" class="pista"></g>` +
     `<rect id="cursor" class="cursor" width="${U}" height="${U}" rx="8"/>`;
-  capas = { bloqueadores: $('capa-bloqueadores'), lineas: $('capa-lineas'), puntos: $('capa-puntos'), sombra: $('capa-sombra'), cursor: $('cursor') };
+  capas = { bloqueadores: $('capa-bloqueadores'), lineas: $('capa-lineas'), puntos: $('capa-puntos'), ultima: $('capa-ultima'), sombra: $('capa-sombra'), pista: $('capa-pista'), cursor: $('cursor') };
 }
 
 // El tablero mide un número entero de píxeles por casilla (rejilla nítida), el mayor que cabe en la zona
 // y nunca más alto que la ventana.
 function ajustarTamano() {
+  ajustarAcciones();
   const ancho = el.zona.clientWidth, alto = Math.min(el.zona.clientHeight, document.documentElement.clientHeight - 20);
   if (ancho <= 0 || alto <= 0) return;
   const lado = acotar(Math.floor(Math.min(ancho / partida.columnas, alto / partida.filas)), 8, LADO_MAXIMO);
   el.tablero.style.width = `${lado * partida.columnas}px`;
   el.tablero.style.height = `${lado * partida.filas}px`;
+  // Trazo de la última jugada: 0,06 de casilla y, como mínimo, 2 px de pantalla (§8.1).
+  const trazo = acotar(2 * U / lado, 0.06 * U, 0.25 * U);
+  if (trazo !== trazoUltima) { trazoUltima = trazo; pintarUltima(false); }
+}
+
+// Botones de acción (§8.2): icono y palabra; si no caben, solo la palabra; si tampoco, solo el icono. Se mide, no se adivina por el ancho.
+function ajustarAcciones() {
+  const caja = el.acciones;
+  caja.classList.remove('sin-icono', 'solo-icono');
+  const raiz = document.documentElement;
+  const cabe = () => raiz.scrollWidth <= raiz.clientWidth && [...caja.querySelectorAll('.boton:not([hidden]) .etiqueta')].every(e => e.scrollWidth <= e.clientWidth);
+  if (cabe()) return;
+  caja.classList.add('sin-icono');
+  if (cabe()) return;
+  caja.classList.add('solo-icono');
+}
+
+// Última jugada (§8.1): el último punto y el último bloqueador puestos, sean de quien sean, según el historial.
+let trazoUltima = 0.06 * U;    // grosor del trazo en unidades del viewBox
+function pintarUltima(fundido) {
+  const jugadas = partida.jugadas;
+  let punto = null, bloqueador = null;
+  for (let i = jugadas.length - 1; i >= 0 && !(punto && bloqueador); i--) {
+    if (jugadas[i].accion === 'marcar' && !punto) punto = jugadas[i];
+    else if (jugadas[i].accion === 'bloquear' && !bloqueador) bloqueador = jugadas[i];
+  }
+  const clase = fundido ? ' fundido' : '';
+  let html = '';
+  if (bloqueador) {
+    const m = trazoUltima / 2;
+    html += `<rect class="ultima-bloqueador ${claseJugador(bloqueador.jugador)}${clase}" data-columna="${bloqueador.columna}" data-fila="${bloqueador.fila}" x="${bloqueador.columna * U + m}" y="${bloqueador.fila * U + m}" width="${U - trazoUltima}" height="${U - trazoUltima}" stroke-width="${trazoUltima}"/>`;
+  }
+  if (punto) {
+    const [x, y] = centro(punto.columna, punto.fila);
+    html += pieza(punto.jugador, x, y, `ultima-punto ${claseJugador(punto.jugador)}${clase}`, `data-columna="${punto.columna}" data-fila="${punto.fila}" stroke-width="${trazoUltima}"`, (RADIO + 0.12 * U) / RADIO);
+  }
+  capas.ultima.innerHTML = html;
 }
 
 // Pinta bloqueadores, líneas y puntos; `nueva` ([c, f]) es la casilla recién jugada, que aparece animada.
@@ -1664,7 +2087,7 @@ function pintarPiezas(nueva) {
       bloqueadores += `<rect class="bloqueador${animacion}" ${datos} x="${c * U}" y="${f * U}" width="${U}" height="${U}"/>`;
     } else {
       const [x, y] = centro(c, f);
-      puntos += `<circle class="punto ${claseJugador(v)}${animacion}" ${datos} cx="${x}" cy="${y}" r="${RADIO}"/>`;
+      puntos += pieza(v, x, y, `punto ${claseJugador(v)}${animacion}`, datos);
     }
   }
   // Cada línea lleva debajo un trazo del color del borde, como los puntos: así contrasta con el tablero en los dos temas.
@@ -1692,7 +2115,7 @@ function pintarSombra() {
     const [c, f] = hover;
     if (partida.accion === 'marcar') {
       const [x, y] = centro(c, f);
-      html = `<circle class="punto ${claseJugador(partida.jugador)}" cx="${x}" cy="${y}" r="${RADIO}"/>`;
+      html = pieza(partida.jugador, x, y, `punto ${claseJugador(partida.jugador)}`);
     } else {
       html = `<rect class="bloqueador" x="${c * U}" y="${f * U}" width="${U}" height="${U}"/>`;
     }
@@ -1700,7 +2123,14 @@ function pintarSombra() {
   capas.sombra.innerHTML = html;
 }
 
-function pintarMarcador() {
+// Segunda línea de la ficha (§7.3): «máx. 18 · 13 por poner»; vacía si no hay nada encendido, el jugador se rindió o la partida acabó.
+function textoDatos(d) {
+  const partes = [];
+  if (datos.maximo) partes.push(d.perdido === true ? 'ya no puede ganar' : `máx. ${d.maximo === null ? '—' : d.maximo}`);
+  if (datos.restantes) partes.push(`${d.restantes} por poner`);
+  return partes.join(' · ');
+}
+function pintarMarcador(est) {
   const p = partida.puntuaciones, conAnimacion = animar();
   el.marcador.innerHTML = p.map((n, i) => {
     const j = i + 1;
@@ -1708,10 +2138,41 @@ function pintarMarcador() {
     const ganadora = partida.terminada && partida.ganadores.includes(j);
     const rendida = partida.rendidos.includes(j);
     const sube = conAnimacion && n > puntuacionesVistas[i];
+    const extra = rendida || partida.terminada ? '' : textoDatos(est.jugadores[i]);
+    const prob = datos.probabilidad && !rendida && !partida.terminada ? `<span class="prob" data-j="${j}" aria-hidden="true"><span class="barra"><i></i></span><span class="pct"></span></span>` : '';
     return `<li class="ficha ${claseJugador(j)}${activa ? ' activa' : ''}${ganadora ? ' ganadora' : ''}${rendida ? ' rendida' : ''}"${activa ? ' aria-current="true"' : ''}>` +
-      `<span class="bolita" aria-hidden="true"></span><span class="nombre">Jugador ${j}${esMaquina(j) ? ' <small class="maquina-etiqueta">máquina</small>' : ''}${rendida ? ' <small class="maquina-etiqueta">se rindió</small>' : ''}</span><span class="cifra${sube ? ' sube' : ''}">${n}</span></li>`;
+      `<span class="bolita" aria-hidden="true"></span><span class="textos"><span class="nombre">Jugador ${j}${esMaquina(j) ? ' <small class="maquina-etiqueta">máquina</small>' : ''}${rendida ? ' <small class="maquina-etiqueta">se rindió</small>' : ''}</span>${extra ? `<span class="datos">${extra}</span>` : ''}${prob}</span><span class="cifra${sube ? ' sube' : ''}">${n}</span></li>`;
   }).join('');
   puntuacionesVistas = p;
+  pintarProbabilidades();
+}
+
+// Probabilidad de ganar (§7.3): barra fina y «≈ 65 %» (al 5 % más cercano) en la ficha. Se calcula tras cada acción, después de pintar,
+// con `setTimeout(…, 0)`; mientras llega el resultado se queda el anterior, y si llega otra acción antes de acabar el viejo se tira.
+let probabilidades = null;     // últimas calculadas, un valor por jugador, o null
+let numeroCalculo = 0;         // cambia con cada acción: el cálculo que no sea el último se tira
+let temporizadorProbabilidad = 0;
+function pintarProbabilidades() {
+  for (const fila of el.marcador.querySelectorAll('.prob')) {
+    const v = probabilidades && probabilidades[fila.dataset.j - 1];
+    fila.hidden = v === undefined || v === null;
+    if (fila.hidden) continue;
+    fila.querySelector('i').style.width = `${v * 100}%`;
+    fila.querySelector('.pct').textContent = `≈ ${Math.round(v * 20) * 5} %`;
+  }
+}
+function programarProbabilidad() {
+  clearTimeout(temporizadorProbabilidad);
+  const numero = ++numeroCalculo;
+  if (!datos.probabilidad || partida.terminada) { probabilidades = null; return; }
+  temporizadorProbabilidad = setTimeout(() => {
+    temporizadorProbabilidad = 0;
+    let v = null;
+    try { v = Maquina.estimar(partida); } catch { /* sin máquina disponible: sin probabilidad */ }
+    if (numero !== numeroCalculo || !v) return;
+    probabilidades = v;
+    pintarProbabilidades();
+  }, 0);
 }
 
 const puntosTexto = n => `${n} ${n === 1 ? 'punto' : 'puntos'}`;
@@ -1722,7 +2183,11 @@ function textoResultado() {
     const quien = nombreJugador(g[0]).replace('Jugador', 'jugador'), rendidos = partida.rendidos;
     return `Gana el ${quien}: ` + (rendidos.length === 1 ? `el jugador ${rendidos[0]} se rindió` : 'los demás se han rendido');
   }
-  if (g.length === 1) return `Gana el ${nombreJugador(g[0]).replace('Jugador', 'jugador')} con ${puntosTexto(maximo)}`;
+  const quienGana = nombreJugador(g[0]).replace('Jugador', 'jugador');
+  if (g.length === 1 && partida.reglas.desempate === 'segundo' && partida.puntuaciones[0] === partida.puntuaciones[1]) {
+    return `Empate a ${puntosTexto(maximo)}: gana el ${quienGana} por desempate`;
+  }
+  if (g.length === 1) return `Gana el ${quienGana} con ${puntosTexto(maximo)}`;
   return `Empate a ${puntosTexto(maximo)}` + (g.length < partida.jugadores ? ` entre los jugadores ${enumerar(g)}` : '');
 }
 
@@ -1747,7 +2212,8 @@ function pintarEstado() {
   el.estadoPieza.className = `pieza-mini ${pieza}`;
   el.estadoPieza.hidden = !pieza;
   if (el.estadoTexto.textContent !== texto) el.estadoTexto.textContent = texto;
-  const variante = descripcionReglas(partida.reglas);
+  const vacias = datos.vacias && !partida.terminada ? `${partida.vacias} ${partida.vacias === 1 ? 'casilla vacía' : 'casillas vacías'}` : '';
+  const variante = [textoVariante(), vacias].filter(Boolean).join(' · ');
   el.estadoVariante.textContent = variante;
   el.estadoVariante.hidden = !variante;
 }
@@ -1762,13 +2228,53 @@ function pintarFin() {
     const j = i + 1;
     return `<li class="${claseJugador(j)}${partida.ganadores.includes(j) ? ' ganador' : ''}"><span class="bolita" aria-hidden="true"></span>${nombreJugador(j)}${partida.rendidos.includes(j) ? ' (se rindió)' : ''}: <strong>${puntosTexto(n)}</strong></li>`;
   }).join('');
+  const total = contador ? contador.victorias.reduce((a, b) => a + b, contador.empates) : 0;
+  el.finContador.hidden = !total;
+  if (total) {
+    el.finContador.textContent = 'Partidas ganadas: ' + contador.victorias.map((n, i) => `${nombreCorto(i + 1)} ${n}`).join(' · ') + (contador.empates ? ` · empates ${contador.empates}` : '');
+  }
+}
+
+// ---------- contador de victorias (§8.3) ----------
+// Se guarda en `conecta-puntos.contador` y se reinicia cuando cambia la lista de jugadores (número, tipo, nivel de las máquinas).
+// Nunca se cuenta una partida restaurada ya terminada, ni las de ?demo=.
+let contador = null;           // { jugadores: [{ tipo, nivel, nombre }], victorias: [n, …], empates } o null
+let contada = true;            // la partida en curso ya está contada (o no cuenta)
+function listaJugadores() {
+  return Array.from({ length: partida.jugadores }, (_, i) => ({ tipo: tipos[i], nivel: tipos[i] === 'maquina' ? niveles[i] : null, nombre: '' }));
+}
+function guardarContador() {
+  guardar(CLAVE.contador, JSON.stringify(contador));
+}
+function prepararContador() {
+  contador = null;
+  if (demo !== null) return;
+  const lista = listaJugadores();
+  let guardado = null;
+  try { guardado = JSON.parse(leer(CLAVE.contador)); } catch { /* sin contador guardado */ }
+  const valido = guardado && Array.isArray(guardado.jugadores) && Array.isArray(guardado.victorias) && Number.isInteger(guardado.empates) &&
+    guardado.victorias.length === lista.length && guardado.victorias.every(Number.isInteger) && JSON.stringify(guardado.jugadores) === JSON.stringify(lista);
+  contador = valido ? guardado : { jugadores: lista, victorias: lista.map(() => 0), empates: 0 };
+  if (!valido) guardarContador();
+}
+function contarPartida() {
+  if (contada || !partida.terminada) return;
+  contada = true;
+  if (!contador) return;
+  const g = partida.ganadores;
+  if (g.length === 1) contador.victorias[g[0] - 1]++; else contador.empates++;
+  guardarContador();
 }
 
 // Repinta todo lo que depende del estado de la partida y la guarda.
 function pintar(nueva) {
+  contarPartida();
+  const est = partida.estadisticas();
+  quitarPista();   // cualquier jugada, deshacer, rehacer, rendirse o partida nueva borra la pista
   pintarPiezas(nueva);
+  pintarUltima(animar());
   pintarSombra();
-  pintarMarcador();
+  pintarMarcador(est);
   pintarEstado();
   pintarFin();
   el.tablero.classList.toggle('terminada', partida.terminada);
@@ -1776,6 +2282,71 @@ function pintar(nueva) {
   el.rehacer.disabled = !partida.puedeRehacer;
   el.rendirse.disabled = !partida.puedeRendirse || esMaquina(partida.jugador);
   guardarPartida();
+  revisarPerdidas(est);
+  actualizarBotonPista();
+  programarProbabilidad();
+}
+
+// ---------- pista (§7.3) ----------
+let pistaPuesta = false;       // hay casillas sugeridas dibujadas
+let numeroPista = 0;           // cambia con cada acción: una pista que llega tarde se tira
+let calculandoPista = false;
+function actualizarBotonPista() {
+  el.pista.hidden = !datos.pista;
+  el.pista.disabled = partida.terminada || pausada || esMaquina(partida.jugador) || calculandoPista;
+}
+function quitarPista() {
+  numeroPista++;
+  calculandoPista = false;
+  if (!pistaPuesta) return;
+  capas.pista.innerHTML = '';
+  pistaPuesta = false;
+}
+function pintarPista(sugeridas) {
+  const clase = claseJugador(partida.jugador), solo = sugeridas.length === 1;
+  capas.pista.innerHTML = sugeridas.map((s, i) => {
+    const x = s.columna * U, y = s.fila * U;
+    // Con formas (§8.4) y una pieza que poner, el contorno discontinuo tiene la forma del jugador; si no, el marco de la casilla.
+    const marco = partida.jugadores >= 3 && partida.accion === 'marcar'
+      ? pieza(partida.jugador, x + U / 2, y + U / 2, 'pista-marco', '', 1.5)
+      : `<rect class="pista-marco" x="${x + 7}" y="${y + 7}" width="${U - 14}" height="${U - 14}" rx="10"/>`;
+    return `<g class="${clase}">${marco}` +
+      (solo ? '' : `<text class="pista-num" x="${x + 21}" y="${y + 21}">${i + 1}</text>`) + '</g>';
+  }).join('');
+  pistaPuesta = true;
+  const texto = sugeridas.map((s, i) => `${solo ? '' : `${i + 1}) `}columna ${s.columna + 1}, fila ${s.fila + 1}`);
+  el.anuncio.textContent = solo ? `Pista: ${texto[0]}` : `Pistas: ${texto.join('; ')}`;
+}
+function pedirPista() {
+  if (el.pista.disabled) return;
+  quitarPista();
+  calculandoPista = true;
+  el.pista.disabled = true;
+  el.pista.setAttribute('aria-busy', 'true');
+  const numero = numeroPista;
+  setTimeout(() => {   // el botón se pinta «ocupado» antes de que empiece la búsqueda
+    let sugeridas = [];
+    try { sugeridas = new Maquina(Maquina.NIVEL_PISTA).sugerir(partida); } catch { /* sin máquina disponible: sin pista */ }
+    el.pista.removeAttribute('aria-busy');
+    if (numero !== numeroPista) return;
+    calculandoPista = false;
+    actualizarBotonPista();
+    if (sugeridas.length) pintarPista(sugeridas);
+  }, 0);
+}
+// Aviso «ya no puede ganar» (§7.3): la primera vez en la partida que un jugador persona no rendido queda perdido, con el máximo encendido.
+// Se anota siempre (aunque el máximo esté apagado o la partida se esté montando) para no avisar de lo que ya pasó; no se repite al deshacer.
+function revisarPerdidas(est) {
+  if (partida.terminada) return;
+  const avisar_ = datos.maximo && !sinAvisarPerdidas;
+  for (let j = 1; j <= partida.jugadores; j++) {
+    if (est.jugadores[j - 1].perdido !== true || partida.rendidos.includes(j) || perdidasAvisadas.has(j)) continue;
+    perdidasAvisadas.add(j);
+    if (avisar_ && !esMaquina(j)) {
+      const texto = `Jugador ${j}: ya no puedes ganar. Puedes rendirte o seguir jugando.`;
+      setTimeout(() => avisar(texto, 3000, true), 0);   // después de pintar la jugada y de su aviso de puntuación
+    }
+  }
 }
 function guardarPartida() {
   guardar(CLAVE.partida, JSON.stringify({ partida: partida.serializar(), tipos, niveles }));
@@ -1813,8 +2384,15 @@ function establecer(nueva, quienes = opciones) {
   hover = null;
   cursor = null;
   puntuacionesVistas = partida.puntuaciones;
+  document.querySelector('.app').classList.toggle('con-formas', partida.jugadores >= 3);
+  prepararContador();
+  contada = demo !== null || partida.terminada;
   montarTablero();
+  perdidasAvisadas = new Set();
+  probabilidades = null;
+  sinAvisarPerdidas = true;
   pintar();
+  sinAvisarPerdidas = false;
   ajustarTamano();   // con marcador y estado ya pintados, la medida de la zona es la buena
   programarMaquina();
 }
@@ -1855,12 +2433,13 @@ function ocultarAviso() {
   // Tras el fundido se vacía el texto: no queda para los lectores de pantalla y el siguiente aviso se anuncia aunque repita.
   temporizadorAvisoTexto = setTimeout(() => { el.aviso.textContent = ''; }, 250);
 }
-function avisar(texto) {
+function avisar(texto, ms = 2000, largo = false) {
   ocultarAviso();
   clearTimeout(temporizadorAvisoTexto);
   el.aviso.textContent = texto;
+  el.aviso.classList.toggle('largo', largo);
   el.aviso.classList.add('visible');
-  temporizadorAviso = setTimeout(ocultarAviso, 2000);
+  temporizadorAviso = setTimeout(ocultarAviso, ms);
 }
 
 function sacudir(c, f) {
@@ -1986,7 +2565,7 @@ el.svg.addEventListener('keydown', evento => {
 el.svg.addEventListener('blur', ocultarCursor);
 document.addEventListener('keydown', evento => {
   if (!(evento.ctrlKey || evento.metaKey) || evento.altKey || evento.key.toLowerCase() !== 'z') return;
-  if (document.querySelector('dialog[open]')) return;
+  if (document.querySelector('dialog[open]:not(.panel-datos)')) return;
   evento.preventDefault();
   if (evento.shiftKey) rehacer(); else deshacer();
 });
@@ -2038,20 +2617,53 @@ function abrirNueva() {
   campos.cruces.value = opciones.cruces;
   campos.puntuacion.value = opciones.puntuacion;
   campos.valor.value = opciones.valor;
-  el.variantes.open = Boolean(descripcionReglas(opciones));   // abierto solo si hay alguna variante activa
+  campos.desempate.value = opciones.desempate;
+  // Abierto solo si el modo es «Personalizado» (§9.2).
+  el.variantes.open = sincronizarModo() === 'personalizado';
   el.dialogoNueva.showModal();
 }
 // Muestra solo las filas de los jugadores elegidos y el nivel de los que son máquina.
 function actualizarQuienes() {
   const campos = el.formNueva.elements, cuantos = Number(campos.jugadores.value);
+  el.quienes.classList.toggle('con-formas', cuantos >= 3);
   for (const fila of el.quienes.querySelectorAll('.quien')) {
     const j = Number(fila.dataset.jugador);
     fila.hidden = j > cuantos;
     fila.querySelector('.nivel').hidden = campos[`tipo${j}`].value !== 'maquina';
   }
 }
+// Modo, desempate y valor del diálogo (§9.2). El modo marcado se deduce de las reglas efectivas; con 3-4 jugadores el
+// desempate efectivo es «ninguno» y «Para competir» y la fila «Si hay empate» están desactivados.
+function sincronizarModo() {
+  const campos = el.formNueva.elements, dos = Number(campos.jugadores.value) === 2, suma = campos.puntuacion.value === 'suma';
+  const opcionN = campos.valor.querySelector('option[value="n"]');
+  opcionN.disabled = opcionN.hidden = suma;
+  if (suma && campos.valor.value === 'n') campos.valor.value = 'n2';
+  for (const r of campos.desempate) r.disabled = !dos;
+  const competir = [...campos.modo].find(r => r.value === 'competir');
+  competir.disabled = !dos;
+  competir.parentElement.title = dos ? '' : 'Solo con 2 jugadores';
+  const modo = modoDe({
+    bloqueadores: campos.bloqueadores.value !== 'no', cruces: campos.cruces.value, puntuacion: campos.puntuacion.value,
+    valor: campos.valor.value, desempate: dos ? campos.desempate.value : 'ninguno',
+  });
+  campos.modo.value = modo;
+  $('nota-modo').textContent = NOTA_MODO[modo];
+  return modo;
+}
 el.formNueva.addEventListener('change', evento => {
-  if (/^(jugadores|tipo\d)$/.test(evento.target.name)) actualizarQuienes();
+  const nombre = evento.target.name;
+  if (/^(jugadores|tipo\d)$/.test(nombre)) actualizarQuienes();
+  if (nombre === 'modo' && MODOS[evento.target.value]) {
+    const campos = el.formNueva.elements, m = MODOS[evento.target.value];
+    campos.bloqueadores.value = m.bloqueadores ? 'si' : 'no';
+    campos.cruces.value = m.cruces; campos.puntuacion.value = m.puntuacion; campos.valor.value = m.valor; campos.desempate.value = m.desempate;
+  }
+  if (/^(modo|jugadores|bloqueadores|cruces|puntuacion|valor|desempate)$/.test(nombre)) sincronizarModo();
+});
+// «Personalizado» sale marcado pero no se puede pulsar (§9.2).
+el.formNueva.addEventListener('click', evento => {
+  if (evento.target.name === 'modo' && evento.target.value === 'personalizado') evento.preventDefault();
 });
 // Con una partida a medias se pide confirmación antes de descartarla.
 function pedirNuevaPartida() {
@@ -2059,6 +2671,15 @@ function pedirNuevaPartida() {
 }
 $('nueva').addEventListener('click', pedirNuevaPartida);
 $('fin-nueva').addEventListener('click', abrirNueva);
+// Revancha (§8.3): mismas opciones y mismos jugadores, y empieza el siguiente. Sin confirmación: la partida ya ha terminado.
+$('revancha').addEventListener('click', () => {
+  if (!partida.terminada) return;
+  ignorarTableroHasta = performance.now() + 350;   // el segundo clic de un doble clic no debe jugar en la partida nueva
+  const empieza = partida.empieza % partida.jugadores + 1;
+  const { columnas, filas, jugadores, bloqueadores, reglas } = partida;
+  establecer(new Partida({ columnas, filas, jugadores, bloqueadores, ...reglas, empieza }), { tipos: tipos.slice(), niveles: niveles.slice() });
+  avisar(`Empieza ${nombreCorto(empieza)}`);
+});
 $('seguir-jugando').addEventListener('click', () => el.dialogoConfirmar.close());
 $('descartar').addEventListener('click', () => { el.dialogoConfirmar.close(); abrirNueva(); });
 $('cancelar').addEventListener('click', () => el.dialogoNueva.close());
@@ -2080,12 +2701,13 @@ el.formNueva.addEventListener('submit', evento => {
     cruces: campos.cruces.value,
     puntuacion: campos.puntuacion.value,
     valor: campos.valor.value,
+    desempate: campos.desempate.value,
     tipos: [1, 2, 3, 4].map(j => campos[`tipo${j}`].value),
     niveles: [1, 2, 3, 4].map(j => campos[`nivel${j}`].value),
   });
   guardar(CLAVE.opciones, JSON.stringify(opciones));
   el.dialogoNueva.close();
-  establecer(new Partida(opciones));
+  establecer(new Partida(opcionesDeMotor(opciones)));
 });
 
 // ---------- ayuda y cierre de diálogos ----------
@@ -2106,7 +2728,49 @@ for (const dialogo of document.querySelectorAll('dialog')) {
   });
 }
 
+// ---------- panel «Datos de la partida» (§7.3): no modal, se aplica al momento, sin tocar la partida ----------
+function guardarDatos() {
+  if (datosTodos) return;   // ?datos=todos no guarda nada
+  guardar(CLAVE.datos, JSON.stringify(datos));
+}
+function pintarDatos() {
+  if (!datos.pista) quitarPista();   // apagar la casilla borra la pista
+  pintarMarcador(partida.estadisticas());
+  pintarEstado();
+  actualizarBotonPista();
+  programarProbabilidad();
+  ajustarTamano();
+}
+el.pista.addEventListener('click', pedirPista);
+function cerrarDatos() {
+  if (!el.dialogoDatos.open) return;
+  el.dialogoDatos.close();
+  el.datos.setAttribute('aria-expanded', 'false');
+}
+el.datos.addEventListener('click', () => {
+  if (el.dialogoDatos.open) { cerrarDatos(); return; }
+  for (const casilla of el.dialogoDatos.querySelectorAll('input[data-dato]')) casilla.checked = datos[casilla.dataset.dato];
+  el.dialogoDatos.show();
+  el.datos.setAttribute('aria-expanded', 'true');
+});
+el.dialogoDatos.addEventListener('change', evento => {
+  const dato = evento.target.dataset.dato;
+  if (!dato) return;
+  datos = { ...datos, [dato]: evento.target.checked };
+  guardarDatos();
+  pintarDatos();
+});
+// Se cierra con Esc, con un toque fuera o con el propio botón.
+document.addEventListener('pointerdown', evento => {
+  if (el.dialogoDatos.open && !el.dialogoDatos.contains(evento.target) && !el.datos.contains(evento.target)) cerrarDatos();
+}, true);
+el.dialogoDatos.addEventListener('keydown', evento => {
+  if (evento.key === 'Escape') { evento.preventDefault(); cerrarDatos(); el.datos.focus(); }
+});
+el.dialogoDatos.addEventListener('close', () => el.datos.setAttribute('aria-expanded', 'false'));
+
 // ---------- arranque ----------
+datos = leerDatos();
 pintarSonido();
 pintarTema();
 {
@@ -2138,7 +2802,7 @@ if (demo !== null) {
       }
     } catch { guardada = null; quienes = opciones; /* partida guardada corrupta: se empieza otra */ }
   }
-  establecer(guardada || new Partida(opciones), guardada ? quienes : opciones);
+  establecer(guardada || new Partida(opcionesDeMotor(opciones)), guardada ? quienes : opciones);
 }
 // El tablero se vuelve a medir al cambiar el tamaño de la ventana, girar el móvil o cambiar de alto el marcador.
 if ('ResizeObserver' in window) new ResizeObserver(ajustarTamano).observe(el.zona);
