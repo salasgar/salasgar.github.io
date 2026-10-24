@@ -327,16 +327,25 @@ function partir(rule, params, hi){
   return {ok, ko};
 }
 
-// Distractores "cercanos": los que están más pegados a un número válido obligan
-// a calcular de verdad en lugar de descartar de un vistazo.
+// Distractores "cercanos": los que están pegados a un número válido obligan
+// a calcular de verdad en lugar de descartar de un vistazo. Para que "el mayor",
+// "el menor" o "cualquier impar" no sean pistas, no se corta por distancia (eso
+// favorecía siempre a los mismos números): cada candidato del rango entra con un
+// peso que baja suavemente con su distancia al válido más cercano, y se sortean
+// sin repetición. Así salen cercanos con más frecuencia, pero repartidos por todo el rango.
 function distractoresCercanos(ok, ko, cuantos){
-  const conDistancia = ko.map(v => {
+  const pool = ko.map(v => {
     let d = Infinity;
     for(const w of ok){ const dd = Math.abs(w - v); if(dd < d) d = dd; }
-    return {v, d};
-  }).sort((a,b) => a.d - b.d);
-  const ventana = conDistancia.slice(0, Math.max(cuantos*3, 8));
-  return shuffle(ventana).slice(0, cuantos).map(o => o.v);
+    return {v, w: 1 / (1 + Math.sqrt(d))};
+  });
+  const res = [];
+  while(res.length < cuantos && pool.length){
+    let r = Math.random() * pool.reduce((s,o) => s + o.w, 0), i = 0;
+    while(i < pool.length - 1 && r >= pool[i].w){ r -= pool[i].w; i++; }
+    res.push(pool.splice(i,1)[0].v);
+  }
+  return res;
 }
 
 const numBloques = level => Math.min(2 + Math.floor(level/2), 6);
@@ -375,6 +384,28 @@ function colocar(valores){
   return valores.map((val, i) => ({ ...val, ...(libres[i] || {x:randInt(0,COLS-1), y:randInt(0,ROWS-1)}) }));
 }
 
+/* ============================ almacenamiento ============================ */
+// localStorage puede lanzar (navegación privada, almacenamiento bloqueado) o devolver
+// valores inesperados: toda lectura y escritura pasa por aquí y el juego sigue igual.
+function leerAlmacen(clave){
+  try{ return localStorage.getItem(clave); }catch(e){ return null; }
+}
+function guardarAlmacen(clave, valor){
+  try{ localStorage.setItem(clave, String(valor)); }catch(e){}
+}
+function leerLang(){
+  const v = leerAlmacen('sdd-lang');
+  return (v === 'es' || v === 'en' || v === 'mix') ? v : 'mix';
+}
+function leerNivel(){
+  const n = Number(leerAlmacen('sdd-level'));
+  return (n === 1 || n === 2 || n === 3 || n === 4) ? n : 1;
+}
+function leerMejor(){
+  const n = Number(leerAlmacen('sdd-best'));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 /* ============================ estado ============================ */
 const COLS = 24, ROWS = 18;
 const VIDAS = 3;
@@ -383,8 +414,8 @@ const state = {
   phase:'start',              // start | playing | paused | over
   snake:[], dir:{x:1,y:0}, cola:[],
   blocks:[], rule:null, params:null, lang:'es',
-  langMode: localStorage.getItem('sdd-lang') || 'mix',
-  startLevel: Number(localStorage.getItem('sdd-level')) || 1,
+  langMode: leerLang(),
+  startLevel: leerNivel(),
   score:0, level:1, lives:VIDAS, aciertos:0, fallos:0,
   mistakes:[], flash:null, acc:0, last:0
 };
@@ -478,8 +509,8 @@ function paso(){
 
 function finPartida(motivo){
   state.phase = 'over';
-  const best = Math.max(state.score, Number(localStorage.getItem('sdd-best') || 0));
-  localStorage.setItem('sdd-best', best);
+  const best = Math.max(state.score, leerMejor());
+  guardarAlmacen('sdd-best', best);
 
   $('overTitle').textContent = motivo;
   $('overSummary').textContent =
@@ -637,7 +668,7 @@ function pintarLang(){
 $('langPick').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
   state.langMode = b.dataset.lang;
-  localStorage.setItem('sdd-lang', state.langMode);
+  guardarAlmacen('sdd-lang', state.langMode);
   pintarLang();
 });
 
@@ -656,7 +687,7 @@ function pintarNivel(){
 $('levelPick').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
   state.startLevel = Number(b.dataset.level);
-  localStorage.setItem('sdd-level', state.startLevel);
+  guardarAlmacen('sdd-level', state.startLevel);
   pintarNivel();
 });
 
@@ -716,6 +747,54 @@ function pruebas(){
       const celdas = new Set(b.map(x => x.x + ',' + x.y));
       if(celdas.size !== b.length) fallo(`nivel ${level}: bloques superpuestos`);
     }
+  }
+
+  // Sesgo de los distractores: en muchas rondas de «múltiplo» y «divisible» (nivel 10),
+  // el mayor y el menor del tablero no deben acertar mucho más que el azar.
+  for(const [lvl, id] of [[10,'multiplo'],[10,'divisible'],[4,'primo'],[4,'compuesto']]){
+    state.level = lvl;
+    let n = 0, mayor = 0, menor = 0, azar = 0;
+    for(let i=0; i<3000 && n<600; i++){
+      state.rule = null; nuevaRonda();
+      if(state.rule.id !== id) continue;
+      const b = state.blocks.slice().sort((p,q) => p.v - q.v);
+      n++; azar += b.filter(x => x.ok).length / b.length;
+      if(b[b.length-1].ok) mayor++;
+      if(b[0].ok) menor++;
+    }
+    const lim = (azar/n) + 0.2;
+    if(n < 100) fallo(`sesgo ${id}: muy pocas rondas (${n})`);
+    else if(mayor/n > lim) fallo(`sesgo ${id} nivel ${lvl}: el mayor acierta ${Math.round(100*mayor/n)} %`);
+    else if(id !== 'primo' && menor/n > lim) fallo(`sesgo ${id} nivel ${lvl}: el menor acierta ${Math.round(100*menor/n)} %`);
+  }
+  {
+    // Primo, nivel 10: tienen que salir impares compuestos entre los distractores.
+    state.level = 10; let n = 0, conImpar = 0;
+    for(let i=0; i<3000 && n<400; i++){
+      state.rule = null; nuevaRonda();
+      if(state.rule.id !== 'primo') continue;
+      n++; if(state.blocks.some(x => !x.ok && x.v > 1 && x.v % 2)) conImpar++;
+    }
+    if(conImpar/n < 0.4) fallo(`primo: solo ${Math.round(100*conImpar/n)} % de rondas con un impar compuesto`);
+  }
+
+  // Almacenamiento: con localStorage roto o con valores raros, nada debe lanzar.
+  {
+    const orig = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    try{
+      Object.defineProperty(window, 'localStorage', {configurable:true, get(){ throw new Error('bloqueado'); }});
+      if(leerLang() !== 'mix' || leerNivel() !== 1 || leerMejor() !== 0) fallo('almacenamiento bloqueado: valores por defecto');
+      guardarAlmacen('sdd-best', 5);
+    }catch(e){ fallo('almacenamiento: ' + e.message); }
+    try{
+      const datos = {'sdd-lang':'fr', 'sdd-level':'9', 'sdd-best':'abc'};
+      Object.defineProperty(window, 'localStorage', {configurable:true, value:{getItem:k => datos[k] ?? null, setItem(){ throw new Error('lleno'); }}});
+      if(leerLang() !== 'mix') fallo('sdd-lang inválido');
+      if(leerNivel() !== 1) fallo('sdd-level inválido');
+      if(leerMejor() !== 0) fallo('sdd-best inválido');
+      guardarAlmacen('sdd-best', 5);
+    }catch(e){ fallo('almacenamiento: ' + e.message); }
+    if(orig) Object.defineProperty(window, 'localStorage', orig); else delete window.localStorage;
   }
 
   console.log(log.length ? log.join('\n') : '✅ Todas las pruebas pasan');
