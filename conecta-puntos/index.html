@@ -389,6 +389,12 @@ html.pizarra .repaso { font-size: 22px; }
 .con-formas .j4 .punto-mini::after { content: ""; position: absolute; inset: 26%; background: var(--color); transform: translateY(-7%) scale(1.2); clip-path: polygon(50% 21.9%, 81% 75.6%, 19% 75.6%); }
 .ultima .fundido { animation: aparecer-marca .15s ease-out both; }
 @keyframes aparecer-marca { from { opacity: 0; } }
+/* Resalte del grupo que puntúa (§8.7): velo sobre el tablero y, encima, los grupos del jugador con un halo de su color */
+.resalte { pointer-events: none; }
+.resalte.entra { animation: aparecer-marca .15s ease-out both; }
+.resalte .velo { fill: var(--tablero); opacity: .82; }
+.resalte-halo { fill: var(--color); stroke: none; opacity: .35; }
+.ficha { cursor: pointer; }
 /* Pista (§7.3): contorno discontinuo del color del jugador al que le toca y su número en una esquina, sin tapar el punto */
 .pista { pointer-events: none; }
 .pista-marco { fill: none; stroke: var(--color); stroke-width: 7; stroke-dasharray: 16 11; stroke-linecap: round; }
@@ -656,7 +662,7 @@ select {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sacudida, .aparece, .cifra.sube, .fin-tarjeta, .ultima .fundido { animation: none; }
+  .sacudida, .aparece, .cifra.sube, .fin-tarjeta, .ultima .fundido, .resalte.entra { animation: none; }
   .traza { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; }
   .aviso { transition: none; }
 }
@@ -1101,6 +1107,7 @@ html.pizarra .linea-borde { stroke-width: 21; }
     <p>También puedes jugar contra la máquina: en «Nueva partida» elige «Máquina» para el jugador que quieras y su nivel, de «Principiante» a «Experto».</p>
     <p>Si no quieres seguir, pulsa «Rendirse» en tu turno: quedas fuera (tus puntos se quedan en el tablero, pero ya no puedes ganar) y los demás continúan; si solo queda un jugador, gana. Puedes deshacerlo.</p>
     <p><strong>Datos de la partida</strong> (botón «Datos»): puedes mostrar las casillas vacías; los puntos que le quedan por poner a cada jugador; y el <strong>máximo</strong> («máx.»), que es lo más que podría llegar a tener cada jugador si los demás le dejaran todo el sitio posible (si es menor que los puntos que ya tiene otro, ya no puede ganar, salvo que se rinda quien va por delante); y el <strong>valor de cada grupo</strong>, escrito junto a él; y la <strong>probabilidad de ganar</strong>, que la app estima jugando 100 partidas de prueba desde la posición actual, como si todos jugaran como la máquina en modo rápido. Es una estimación: al principio marca cerca del 50 % y contra alguien que juega raro se equivoca. Con las variantes que cuentan conexiones (m), o con la suma de grupos de valor n², el máximo no se calcula («máx. —»).</p>
+    <p>Toca la ficha de un jugador para ver qué grupo le da los puntos.</p>
     <p><strong>Pista:</strong> marca la mejor jugada que ve la máquina; si hay dos o tres casi igual de buenas, las marca todas, numeradas de mejor a peor. Puedes hacerle caso o jugar donde quieras.</p>
     <p>Con teclado: flechas para moverte por el tablero, Enter o espacio para poner la pieza, y Ctrl+Z (⌘Z en Mac) para deshacer.</p>
     <p>Juego original en Scratch: <a href="https://scratch.mit.edu/projects/423281174/" target="_blank" rel="noopener">https://scratch.mit.edu/projects/423281174/</a></p>
@@ -2300,10 +2307,10 @@ function montarTablero() {
     `<rect class="fondo" width="${ancho}" height="${alto}"/>` +
     `<g id="capa-bloqueadores"></g>` +
     `<path class="rejilla" d="${rejilla}" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>` +
-    `<g id="capa-lineas"></g><g id="capa-puntos"></g><g id="capa-ultima" class="ultima"></g>` +
+    `<g id="capa-lineas"></g><g id="capa-puntos"></g><g id="capa-resalte" class="resalte"></g><g id="capa-ultima" class="ultima"></g>` +
     `<g id="capa-sombra" class="sombra"></g><g id="capa-pista" class="pista"></g><g id="capa-valores" class="valores"></g>` +
     `<rect id="cursor" class="cursor" width="${U}" height="${U}" rx="8"/>`;
-  capas = { bloqueadores: $('capa-bloqueadores'), lineas: $('capa-lineas'), puntos: $('capa-puntos'), ultima: $('capa-ultima'), sombra: $('capa-sombra'), pista: $('capa-pista'), valores: $('capa-valores'), cursor: $('cursor') };
+  capas = { bloqueadores: $('capa-bloqueadores'), lineas: $('capa-lineas'), puntos: $('capa-puntos'), resalte: $('capa-resalte'), ultima: $('capa-ultima'), sombra: $('capa-sombra'), pista: $('capa-pista'), valores: $('capa-valores'), cursor: $('cursor') };
 }
 
 const GANANCIA_GIRO = 1.15;    // el tablero gira si así la casilla sale al menos 1,15 veces mayor (§8.5)
@@ -2380,6 +2387,7 @@ function pintarUltima(fundido) {
 
 // Pinta bloqueadores, líneas y puntos; `nueva` ([c, f]) es la casilla recién jugada, que aparece animada.
 function pintarPiezas(nueva) {
+  quitarResalte();   // el resalte de §8.7 es de la posición de antes
   const t = partida.tablero, conAnimacion = Boolean(nueva) && animar();
   const esNueva = (c, f) => conAnimacion && c === nueva[0] && f === nueva[1];
   let bloqueadores = '', puntos = '';
@@ -2440,6 +2448,62 @@ function pintarValores() {
   capas.valores.innerHTML = html;
 }
 
+// Resalte del grupo que puntúa (§8.7): al tocar la ficha de un jugador (o pasar el ratón por encima), durante RESALTE_MS se
+// atenúa el tablero y se redibujan, sin atenuar, los grupos que le dan su puntuación: con «grupo mayor», el grupo (o los
+// grupos, si empatan) de mayor valor; con «suma», todos los que suman. No es una jugada: no toca la partida.
+const RESALTE_MS = 1500;
+let temporizadorResalte = 0;
+function quitarResalte() {
+  clearTimeout(temporizadorResalte);
+  if (capas && capas.resalte) capas.resalte.innerHTML = '';
+}
+function gruposQuePuntuan(j) {
+  const { puntuacion, valor } = partida.reglas;
+  const propios = partida.grupos().filter(g => g.jugador === j).map(g => ({ g, v: Partida.valorGrupo(g.casillas.length, g.aristas, valor) }));
+  if (puntuacion === 'suma') return propios.filter(({ v }) => v > 0).map(({ g }) => g);
+  const mejor = Math.max(0, ...propios.map(({ v }) => v));
+  return mejor > 0 ? propios.filter(({ v }) => v === mejor).map(({ g }) => g) : [];
+}
+function resaltarGrupo(j, anunciar) {
+  quitarResalte();
+  const grupos = gruposQuePuntuan(j);
+  if (!grupos.length) return;
+  const clave = (c, f) => `${c},${f}`, suyas = new Set(grupos.flatMap(g => g.casillas.map(([c, f]) => clave(c, f))));
+  const ancho = (girado ? partida.filas : partida.columnas) * U, alto = (girado ? partida.columnas : partida.filas) * U;
+  let bordes = '', lineas = '', halos = '', puntos = '';
+  for (const l of partida.lineas()) {
+    if (l.jugador !== j || !suyas.has(clave(...l.a))) continue;
+    const [x1, y1] = centro(...l.a), [x2, y2] = centro(...l.b), coordenadas = `x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"`;
+    bordes += `<line class="linea-borde ${claseJugador(j)}" ${coordenadas}/>`;
+    lineas += `<line class="linea ${claseJugador(j)}" ${coordenadas}/>`;
+  }
+  for (const g of grupos) for (const [c, f] of g.casillas) {
+    const [x, y] = centro(c, f);
+    halos += pieza(j, x, y, `resalte-halo ${claseJugador(j)}`, '', 1.35);
+    puntos += pieza(j, x, y, `punto ${claseJugador(j)}`);
+  }
+  capas.resalte.innerHTML = `<rect class="velo" width="${ancho}" height="${alto}"/>` + halos + bordes + lineas + puntos;
+  capas.resalte.classList.toggle('entra', animar());
+  temporizadorResalte = setTimeout(quitarResalte, RESALTE_MS);
+  if (anunciar) {
+    const valor = partida.puntuaciones[j - 1], n = grupos.length;
+    el.anuncio.textContent = '';
+    setTimeout(() => { el.anuncio.textContent = partida.reglas.puntuacion === 'suma' ? `${nombreBase(j)}: sus grupos suman ${valor}` : n > 1 ? `${nombreBase(j)}: sus ${n} grupos mayores valen ${valor}` : `${nombreBase(j)}: su grupo mayor vale ${valor}`; }, 50);
+  }
+}
+// Con un toque, Intro o Espacio en la ficha, y con el ratón al pasar por encima (sin anunciar nada: el lector no oye el ratón).
+el.marcador.addEventListener('click', evento => { const ficha = evento.target.closest('.ficha'); if (ficha) resaltarGrupo(Number(ficha.dataset.j), true); });
+el.marcador.addEventListener('keydown', evento => {
+  const ficha = evento.target.closest('.ficha');
+  if (!ficha || evento.ctrlKey || evento.metaKey || evento.altKey || (evento.key !== 'Enter' && evento.key !== ' ')) return;
+  evento.preventDefault();
+  resaltarGrupo(Number(ficha.dataset.j), true);
+});
+el.marcador.addEventListener('pointerover', evento => {
+  const ficha = evento.target.closest('.ficha');
+  if (ficha && evento.pointerType === 'mouse' && ficha !== (evento.relatedTarget && evento.relatedTarget.closest && evento.relatedTarget.closest('.ficha'))) resaltarGrupo(Number(ficha.dataset.j), false);
+});
+
 // Con ratón o lápiz, muestra en tenue lo que se va a poner en la casilla vacía bajo el puntero.
 function pintarSombra() {
   let html = '';
@@ -2473,7 +2537,7 @@ function pintarMarcador(est) {
     const sube = conAnimacion && n > puntuacionesVistas[i];
     const extra = rendida || partida.terminada ? '' : textoDatos(est.jugadores[i]);
     const prob = datos.probabilidad && !repaso && !rendida && !partida.terminada ? `<span class="prob" data-j="${j}" aria-hidden="true"><span class="barra"><i></i></span><span class="pct"></span></span>` : '';
-    return `<li class="ficha ${claseJugador(j)}${activa ? ' activa' : ''}${ganadora ? ' ganadora' : ''}${rendida ? ' rendida' : ''}"${activa ? ' aria-current="true"' : ''}>` +
+    return `<li class="ficha ${claseJugador(j)}${activa ? ' activa' : ''}${ganadora ? ' ganadora' : ''}${rendida ? ' rendida' : ''}" data-j="${j}" tabindex="0" role="button"${activa ? ' aria-current="true"' : ''}>` +
       `<span class="bolita" aria-hidden="true"></span><span class="textos"><span class="nombre">${escapar(nombreBase(j))}${esMaquina(j) ? ' <small class="maquina-etiqueta">máquina</small>' : ''}${rendida ? ' <small class="maquina-etiqueta">se rindió</small>' : ''}</span>${extra ? `<span class="datos">${extra}</span>` : ''}${prob}</span><span class="cifra${sube ? ' sube' : ''}">${n}</span></li>`;
   }).join('');
   puntuacionesVistas = p;
