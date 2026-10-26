@@ -5,8 +5,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Conecta puntos</title>
-<meta name="description" content="Juego de tablero para dos o más jugadores en el mismo dispositivo: conecta tus puntos y bloquea a los demás.">
+<meta name="description" content="Juego de estrategia para 2 a 4 jugadores: conecta tus puntos y bloquea a los demás.">
 <meta name="author" content="Juan Luis Salas García">
+<meta property="og:title" content="Conecta puntos">
+<meta property="og:description" content="Juego de estrategia para 2 a 4 jugadores: conecta tus puntos y bloquea a los demás.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://salasgar.github.io/conecta-puntos/">
+<meta property="og:image" content="https://salasgar.github.io/conecta-puntos/vista-previa.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M9 23 21 11' stroke='%232a78d6' stroke-width='4'/%3E%3Ccircle cx='9' cy='23' r='6' fill='%232a78d6'/%3E%3Ccircle cx='21' cy='11' r='6' fill='%232a78d6'/%3E%3Ccircle cx='25' cy='25' r='5' fill='%23e34948'/%3E%3C/svg%3E">
@@ -296,6 +304,21 @@ body {
 .estado-texto { min-width: 0; }
 .estado-variante { font-size: 13px; font-weight: 500; color: var(--texto-suave); }   /* variante de reglas activa */
 .estado .boton.pequeno { margin-left: auto; }
+.repaso { flex: 1 0 100%; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 6px; font-weight: 600; font-size: 14px; }
+.repaso[hidden] { display: none; }
+.repaso .boton.pequeno { margin-left: 0; min-width: 36px; padding: 0 8px; }
+.repaso-texto { min-width: 6.5em; text-align: center; white-space: nowrap; }
+@media (max-width: 420px) {
+  .repaso { gap: 4px; font-size: 13px; }
+  .repaso .boton.pequeno { min-width: 34px; padding: 0 6px; }
+  /* con el botón «Compartir» la cabecera necesita sitio: botones y título algo más pequeños */
+  .ajustes { gap: 4px; }
+  .ajustes .boton { width: 38px; }
+  .titulo { font-size: 16px; gap: 6px; }
+  .logo { width: 22px; height: 22px; }
+}
+.texto-enlace { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--borde); border-radius: 8px; background: var(--superficie-2); color: var(--texto); font: 14px/1.3 ui-monospace, monospace; word-break: break-all; resize: none; }
+html.pizarra .repaso { font-size: 22px; }
 .pieza-mini {
   box-sizing: border-box;
   width: 1.4em;
@@ -499,6 +522,10 @@ dialog a { color: var(--enlace); word-break: break-all; }
 .segmentos label + label span { border-left: 1px solid var(--borde); }
 .segmentos.modos { display: grid; grid-template-columns: 1fr 1fr; }   /* cuatro modos: 2 × 2, para que quepan a 390 px */
 .segmentos.modos label span { border-left: 0; }
+@media (max-width: 480px) {   /* en el móvil la etiqueta «Modos predefinidos» va encima: al lado no caben «Equilibrado» y «Personalizado» */
+  .campo-modos { flex-wrap: wrap; }
+  .campo-modos .segmentos.modos { flex: 1 1 100%; }
+}
 .segmentos.modos label:nth-child(even) span { border-left: 1px solid var(--borde); }
 .segmentos.modos label:nth-child(n+3) span { border-top: 1px solid var(--borde); }
 .segmentos input:disabled + span { opacity: .45; cursor: not-allowed; }
@@ -525,7 +552,8 @@ dialog a { color: var(--enlace); word-break: break-all; }
 /* Quién juega: persona o máquina (y nivel) por jugador */
 .quien { border-top: 1px solid var(--borde); }
 .quien .campo { margin: 8px 0; }
-.quien .nivel { padding-left: 22px; }
+.quien .nivel, .quien .nombre-campo { padding-left: 22px; }
+.nombre-campo input { box-sizing: border-box; flex: 1 1 auto; min-width: 0; max-width: 220px; height: 40px; padding: 0 10px; font: inherit; border: 1px solid var(--borde); border-radius: 8px; background: var(--fondo); color: var(--texto); }
 .nombre-jugador { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--color-texto); }
 .nombre-jugador .bolita { width: 14px; height: 14px; }
 /* Variantes de reglas en «Nueva partida» */
@@ -632,6 +660,71 @@ select {
   .traza { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; }
   .aviso { transition: none; }
 }
+
+/* Valor de cada grupo sobre el tablero (§8.7): rectángulo del color del jugador con el valor en blanco. El script fija el tamaño del texto. */
+.valores { pointer-events: none; }
+.valor-grupo rect { fill: var(--color); stroke: var(--color-borde); stroke-width: 2px; }
+.valor-grupo text { fill: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+
+/* Modo pizarra (§8.6): para proyectar. Sin título ni ajustes; botones, marcador, estado y piezas grandes. El radio de los puntos lo pone el script. */
+#pizarra { display: none; }
+@media (min-width: 700px) { #pizarra { display: inline-flex; } }
+#salir-pizarra { display: none; }
+html.pizarra #salir-pizarra {
+  display: inline-flex;
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+  z-index: 5;
+  width: 32px;
+  height: 32px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border-radius: 8px;
+  opacity: .35;
+}
+html.pizarra #salir-pizarra:hover, html.pizarra #salir-pizarra:focus-visible { opacity: 1; }
+html.pizarra .titulo, html.pizarra .ajustes { display: none; }
+html.pizarra .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr); grid-template-areas: "acciones" "marcador" "estado" "tablero"; gap: 8px; }
+html.pizarra .acciones { justify-content: center; }
+html.pizarra .acciones .boton { font-size: 18px; min-height: 48px; }
+html.pizarra .marcador { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+html.pizarra .ficha { min-width: 300px; min-height: 68px; padding: 8px 22px; gap: 14px; }
+html.pizarra .bolita { width: 28px; height: 28px; }
+html.pizarra .ficha .nombre { font-size: 30px; }
+html.pizarra .ficha .cifra { font-size: 46px; }
+html.pizarra .ficha .maquina-etiqueta { font-size: 20px; }
+html.pizarra .ficha .datos { font-size: 20px; }
+html.pizarra .estado { justify-self: center; font-size: 38px; min-height: 76px; min-width: min(100%, 760px); border-left-width: 10px; }
+html.pizarra .estado-variante { font-size: 22px; }
+html.pizarra .aviso { font-size: 28px; padding: 12px 24px; max-width: min(100vw - 24px, 800px); }
+html.pizarra .fin-tarjeta { width: 520px; max-width: 100%; padding: 24px 28px; }
+html.pizarra .fin h2 { font-size: 34px; }
+html.pizarra .fin-resultado { font-size: 26px; }
+html.pizarra .fin-puntos { font-size: 24px; }
+html.pizarra .fin .boton { font-size: 20px; min-height: 52px; }
+/* Diálogos en la pizarra (§8.6): ≈ 30 % más anchos y con letra de 20 px, para leerlos desde el fondo del aula (el panel «Datos» queda como está). */
+html.pizarra dialog:not(.panel-datos) { width: min(94vw, 520px); font-size: 20px; }
+html.pizarra dialog h2 { font-size: 28px; }
+html.pizarra .bloque-resumen { font-size: 17px; }
+html.pizarra .segmentos span { min-height: 48px; }
+html.pizarra .punto { stroke-width: 4px; }
+html.pizarra .linea { stroke-width: 15; }
+html.pizarra .linea-borde { stroke-width: 21; }
+
+/* Bloques desplegables de «Nueva partida» (§3) */
+.bloque-titulo { font-weight: 600; flex: none; }
+.bloque-resumen { flex: 1 1 auto; min-width: 0; font-size: 14px; font-weight: 500; color: var(--texto-suave); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bloque { border-top: 1px solid var(--borde); }
+.bloque > summary { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 4px 0; cursor: pointer; list-style: none; }
+.bloque > summary::-webkit-details-marker { display: none; }
+.bloque > summary::before { content: ""; flex: none; width: 8px; height: 8px; margin-left: 2px; border: solid var(--texto-suave); border-width: 2px 2px 0 0; transform: rotate(45deg); transition: transform .15s; }
+.bloque[open] > summary::before { transform: rotate(135deg); }
+.bloque > .campo:first-of-type, .bloque > .quienes + .campo { margin-top: 2px; }
+.bloque > div:last-child, .bloque > .variantes { margin-bottom: 10px; }
+.bloque .variantes { margin-top: 4px; border-top: 1px solid var(--borde); }
+.bloque .quien:first-child { border-top: 1px solid var(--borde); }
 </style>
 </head>
 <body>
@@ -641,6 +734,9 @@ select {
   <symbol id="i-rehacer" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
   <symbol id="i-rendirse" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h13l-3 4.5 3 4.5H5"/></symbol>
   <symbol id="i-pista" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></symbol>
+  <symbol id="i-pizarra" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+  <symbol id="i-salir" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-compartir" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></symbol>
   <symbol id="i-datos"viewBox="0 0 24 24"><path d="M5 20v-7M12 20V5M19 20v-10"/></symbol>
   <symbol id="i-sonido"viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></symbol>
   <symbol id="i-silencio" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m23 9-6 6M17 9l6 6"/></symbol>
@@ -660,6 +756,8 @@ select {
 
   <div class="ajustes">
     <button type="button" class="boton" id="datos" aria-label="Datos de la partida" aria-expanded="false" aria-controls="dialogo-datos" title="Datos de la partida"><svg class="icono" aria-hidden="true"><use href="#i-datos"/></svg></button>
+    <button type="button" class="boton" id="compartir" aria-label="Compartir partida" title="Compartir partida"><svg class="icono" aria-hidden="true"><use href="#i-compartir"/></svg></button>
+    <button type="button" class="boton" id="pizarra" aria-label="Modo pizarra" title="Modo pizarra: piezas y textos grandes para proyectar"><svg class="icono" aria-hidden="true"><use href="#i-pizarra"/></svg></button>
     <button type="button" class="boton" id="sonido" aria-pressed="true" aria-label="Sonido" title="Silenciar"><svg class="icono" aria-hidden="true"><use href="#i-sonido"/></svg></button>
     <button type="button" class="boton" id="ayuda" aria-label="Ayuda: cómo se juega" title="Cómo se juega"><svg class="icono" aria-hidden="true"><use href="#i-ayuda"/></svg></button>
     <button type="button" class="boton" id="tema" aria-label="Tema automático. Cambiar tema" title="Tema: automático"><svg class="icono" aria-hidden="true"><use href="#i-tema-auto"/></svg></button>
@@ -675,6 +773,14 @@ select {
         <span class="estado-variante" id="estado-variante" hidden></span>
       </span>
     </span>
+    <div class="repaso" id="repaso" hidden>
+      <button type="button" class="boton pequeno" id="repaso-inicio" aria-label="Al principio" title="Al principio">⏮</button>
+      <button type="button" class="boton pequeno" id="repaso-atras" aria-label="Una jugada atrás" title="Una jugada atrás (←)">◀</button>
+      <span class="repaso-texto" id="repaso-texto"></span>
+      <button type="button" class="boton pequeno" id="repaso-adelante" aria-label="Una jugada adelante" title="Una jugada adelante (→)">▶</button>
+      <button type="button" class="boton pequeno" id="repaso-final" aria-label="Al final" title="Al final">⏭</button>
+      <button type="button" class="boton pequeno" id="repaso-salir">Salir</button>
+    </div>
     <button type="button" class="boton pequeno" id="ver-resultado" hidden>Ver resultado</button>
     <button type="button" class="boton pequeno" id="continuar" hidden>Continuar</button>
   </div>
@@ -693,6 +799,8 @@ select {
           <div class="fin-botones">
             <button type="button" class="boton principal" id="revancha">Revancha</button>
             <button type="button" class="boton" id="fin-nueva">Nueva partida</button>
+            <button type="button" class="boton" id="fin-compartir">Compartir</button>
+            <button type="button" class="boton" id="fin-repeticion">Repetición</button>
             <button type="button" class="boton" id="ver-tablero">Ver tablero</button>
           </div>
         </div>
@@ -709,13 +817,16 @@ select {
   </div>
   <div class="oculto-visual" id="anuncio" role="status" aria-live="polite"></div>
 </div>
+<button type="button" class="boton" id="salir-pizarra" aria-label="Salir del modo pizarra" title="Salir del modo pizarra (Esc)"><svg class="icono" aria-hidden="true"><use href="#i-salir"/></svg></button>
 <p class="copyright-pantalla">© 2026 Juan Luis Salas García</p>
 
 <dialog id="dialogo-nueva" aria-labelledby="titulo-nueva">
   <form id="form-nueva" method="dialog" class="dialogo-contenido">
     <h2 id="titulo-nueva">Nueva partida</h2>
+    <details class="bloque" id="bloque-jugadores" open>
+      <summary><span class="bloque-titulo">Jugadores</span><span class="bloque-resumen" id="resumen-jugadores"></span></summary>
     <div class="campo" role="radiogroup" aria-labelledby="etiqueta-jugadores">
-      <span id="etiqueta-jugadores">Jugadores</span>
+      <span id="etiqueta-jugadores">Cuántos</span>
       <div class="segmentos">
         <label><input type="radio" name="jugadores" value="2" checked><span>2</span></label>
         <label><input type="radio" name="jugadores" value="3"><span>3</span></label>
@@ -730,6 +841,10 @@ select {
             <label><input type="radio" name="tipo1" value="persona" checked><span>Persona</span></label>
             <label><input type="radio" name="tipo1" value="maquina"><span>Máquina</span></label>
           </div>
+        </div>
+        <div class="campo nombre-campo">
+          <label for="nombre-1">Nombre</label>
+          <input id="nombre-1" name="nombre1" type="text" maxlength="12" placeholder="Jugador 1" autocomplete="off" spellcheck="false">
         </div>
         <div class="campo nivel" hidden>
           <span id="nivel-1">Nivel</span>
@@ -752,6 +867,10 @@ select {
             <label><input type="radio" name="tipo2" value="maquina"><span>Máquina</span></label>
           </div>
         </div>
+        <div class="campo nombre-campo">
+          <label for="nombre-2">Nombre</label>
+          <input id="nombre-2" name="nombre2" type="text" maxlength="12" placeholder="Jugador 2" autocomplete="off" spellcheck="false">
+        </div>
         <div class="campo nivel" hidden>
           <span id="nivel-2">Nivel</span>
           <select name="nivel2" aria-labelledby="quien-2 nivel-2">
@@ -772,6 +891,10 @@ select {
             <label><input type="radio" name="tipo3" value="persona" checked><span>Persona</span></label>
             <label><input type="radio" name="tipo3" value="maquina"><span>Máquina</span></label>
           </div>
+        </div>
+        <div class="campo nombre-campo">
+          <label for="nombre-3">Nombre</label>
+          <input id="nombre-3" name="nombre3" type="text" maxlength="12" placeholder="Jugador 3" autocomplete="off" spellcheck="false">
         </div>
         <div class="campo nivel" hidden>
           <span id="nivel-3">Nivel</span>
@@ -794,6 +917,10 @@ select {
             <label><input type="radio" name="tipo4" value="maquina"><span>Máquina</span></label>
           </div>
         </div>
+        <div class="campo nombre-campo">
+          <label for="nombre-4">Nombre</label>
+          <input id="nombre-4" name="nombre4" type="text" maxlength="12" placeholder="Jugador 4" autocomplete="off" spellcheck="false">
+        </div>
         <div class="campo nivel" hidden>
           <span id="nivel-4">Nivel</span>
           <select name="nivel4" aria-labelledby="quien-4 nivel-4">
@@ -808,6 +935,19 @@ select {
         </div>
       </div>
     </div>
+    <div class="campo" role="radiogroup" aria-labelledby="etiqueta-empieza">
+      <span id="etiqueta-empieza">Empieza</span>
+      <div class="segmentos" id="segmentos-empieza">
+        <label><input type="radio" name="empieza" value="1" checked><span>1</span></label>
+        <label><input type="radio" name="empieza" value="2"><span>2</span></label>
+        <label hidden><input type="radio" name="empieza" value="3"><span>3</span></label>
+        <label hidden><input type="radio" name="empieza" value="4"><span>4</span></label>
+        <label><input type="radio" name="empieza" value="azar"><span>Al azar</span></label>
+      </div>
+    </div>
+    </details>
+    <details class="bloque" id="bloque-tablero">
+      <summary><span class="bloque-titulo">Tablero</span><span class="bloque-resumen" id="resumen-tablero"></span></summary>
     <div class="campo">
       <label for="op-columnas">Columnas</label>
       <div class="paso">
@@ -824,12 +964,15 @@ select {
         <button type="button" class="boton" data-campo="op-filas" data-paso="1" aria-label="Más filas">+</button>
       </div>
     </div>
-    <div class="campo" role="radiogroup" aria-labelledby="etiqueta-modo">
-      <span id="etiqueta-modo">Modo</span>
+    </details>
+    <details class="bloque" id="bloque-reglas">
+      <summary><span class="bloque-titulo">Reglas</span><span class="bloque-resumen" id="resumen-reglas"></span></summary>
+    <div class="campo campo-modos" role="radiogroup" aria-labelledby="etiqueta-modo">
+      <span id="etiqueta-modo">Modos predefinidos</span>
       <div class="segmentos modos">
         <label><input type="radio" name="modo" value="clasico" checked><span>Clásico</span></label>
         <label><input type="radio" name="modo" value="equilibrado"><span>Equilibrado</span></label>
-        <label><input type="radio" name="modo" value="competir"><span>Para competir</span></label>
+        <label><input type="radio" name="modo" value="competir"><span>Competir</span></label>
         <label><input type="radio" name="modo" value="personalizado" aria-disabled="true"><span>Personalizado</span></label>
       </div>
     </div>
@@ -886,6 +1029,7 @@ select {
       <p class="nota">Dos puntos por turno: el primero pone un punto y, después, cada jugador pone dos puntos en su turno, sin bloqueadores.</p>
       <p class="nota">n = puntos del grupo, m = conexiones entre ellos. Con cruces prohibidos, una línea no se traza si cruzaría una línea de otro color ya trazada.</p>
     </details>
+    </details>
     <div class="dialogo-botones">
       <button type="button" class="boton" id="cancelar">Cancelar</button>
       <button type="submit" class="boton principal" id="empezar">Empezar</button>
@@ -900,6 +1044,17 @@ select {
     <div class="dialogo-botones">
       <button type="button" class="boton" id="descartar">Empezar otra</button>
       <button type="button" class="boton principal" id="seguir-jugando" autofocus>Seguir jugando</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dialogo-enlace" aria-labelledby="titulo-enlace">
+  <div class="dialogo-contenido">
+    <h2 id="titulo-enlace">Enlace de la partida</h2>
+    <p>No he podido copiarlo yo: cópialo y envíalo.</p>
+    <textarea id="texto-enlace" class="texto-enlace" readonly rows="4" aria-label="Enlace de la partida"></textarea>
+    <div class="dialogo-botones">
+      <button type="button" class="boton principal" id="cerrar-enlace">Cerrar</button>
     </div>
   </div>
 </dialog>
@@ -923,6 +1078,7 @@ select {
     <label><input type="checkbox" data-dato="maximo"><span>Máximo alcanzable<small>y aviso de “ya no puede ganar”</small></span></label>
     <label><input type="checkbox" data-dato="probabilidad"><span>Probabilidad de ganar</span></label>
     <label><input type="checkbox" data-dato="pista"><span>Botón “Pista”</span></label>
+    <label><input type="checkbox" data-dato="valores"><span>Valor de cada grupo<small>escrito junto a él en el tablero</small></span></label>
   </div>
 </dialog>
 
@@ -938,13 +1094,13 @@ select {
     </ul>
     <p>Variante «sin bloqueadores»: cada turno es solo poner un punto.</p>
     <p>Más variantes, en «Nueva partida» → «Variantes del juego»: si una línea puede cruzar a otra de distinto color; si cuenta solo el grupo mayor o la suma de todos los grupos; y cuánto vale un grupo de n puntos y m conexiones (n, m, n + m, n², m² o n² + m²).</p>
-    <p><strong>Modos de juego</strong> (en «Nueva partida» → «Modo»): <strong>Clásico</strong>, las reglas de siempre. <strong>Equilibrado</strong>: sin bloqueadores; cada línea vale un punto y gana quien tenga el grupo con más líneas. Es el más igualado, también con 3 o 4 jugadores. <strong>Para competir</strong> (solo con 2 jugadores): las reglas de siempre, pero si empatáis gana el que no empezó; así, empezar da menos ventaja.</p>
+    <p><strong>Modos de juego</strong> (en «Nueva partida» → «Reglas» → «Modos predefinidos»): <strong>Clásico</strong>, las reglas de siempre. <strong>Equilibrado</strong>: sin bloqueadores; cada línea vale un punto y gana quien tenga el grupo con más líneas. Es el más igualado, también con 3 o 4 jugadores. <strong>Competir</strong> (solo con 2 jugadores): las reglas de siempre, pero si empatáis gana el que no empezó; así, empezar da menos ventaja.</p>
     <p><strong>Si hay empate</strong> (en «Variantes del juego», solo con 2 jugadores): con «Gana el segundo», un empate lo gana el jugador que no empezó la partida.</p>
     <p><strong>Dos puntos por turno</strong> (en «Variantes del juego»): el primero pone un punto y, después, cada jugador pone dos puntos en su turno, sin bloqueadores.</p>
     <p>Con 3 o 4 jugadores, cada uno tiene además su forma: círculo, cuadrado, rombo y triángulo.</p>
     <p>También puedes jugar contra la máquina: en «Nueva partida» elige «Máquina» para el jugador que quieras y su nivel, de «Principiante» a «Experto».</p>
     <p>Si no quieres seguir, pulsa «Rendirse» en tu turno: quedas fuera (tus puntos se quedan en el tablero, pero ya no puedes ganar) y los demás continúan; si solo queda un jugador, gana. Puedes deshacerlo.</p>
-    <p><strong>Datos de la partida</strong> (botón «Datos»): puedes mostrar las casillas vacías; los puntos que le quedan por poner a cada jugador; y el <strong>máximo</strong> («máx.»), que es lo más que podría llegar a tener cada jugador si los demás le dejaran todo el sitio posible (si es menor que los puntos que ya tiene otro, ya no puede ganar, salvo que se rinda quien va por delante); y la <strong>probabilidad de ganar</strong>, que la app estima jugando 100 partidas de prueba desde la posición actual, como si todos jugaran como la máquina en modo rápido. Es una estimación: al principio marca cerca del 50 % y contra alguien que juega raro se equivoca. Con las variantes que cuentan conexiones (m), o con la suma de grupos de valor n², el máximo no se calcula («máx. —»).</p>
+    <p><strong>Datos de la partida</strong> (botón «Datos»): puedes mostrar las casillas vacías; los puntos que le quedan por poner a cada jugador; y el <strong>máximo</strong> («máx.»), que es lo más que podría llegar a tener cada jugador si los demás le dejaran todo el sitio posible (si es menor que los puntos que ya tiene otro, ya no puede ganar, salvo que se rinda quien va por delante); y el <strong>valor de cada grupo</strong>, escrito junto a él; y la <strong>probabilidad de ganar</strong>, que la app estima jugando 100 partidas de prueba desde la posición actual, como si todos jugaran como la máquina en modo rápido. Es una estimación: al principio marca cerca del 50 % y contra alguien que juega raro se equivoca. Con las variantes que cuentan conexiones (m), o con la suma de grupos de valor n², el máximo no se calcula («máx. —»).</p>
     <p><strong>Pista:</strong> marca la mejor jugada que ve la máquina; si hay dos o tres casi igual de buenas, las marca todas, numeradas de mejor a peor. Puedes hacerle caso o jugar donde quieras.</p>
     <p>Con teclado: flechas para moverte por el tablero, Enter o espacio para poner la pieza, y Ctrl+Z (⌘Z en Mac) para deshacer.</p>
     <p>Juego original en Scratch: <a href="https://scratch.mit.edu/projects/423281174/" target="_blank" rel="noopener">https://scratch.mit.edu/projects/423281174/</a></p>
@@ -974,6 +1130,8 @@ const REGLAS = {
   valor: ['n', 'm', 'n+m', 'n2', 'm2', 'n2+m2'],  // valor de un grupo de n puntos y m conexiones (n2 = n², m2 = m²)
   turnos: ['normal', '122'],                      // 'normal': un punto (y un bloqueador); '122': el primero pone un punto y después cada turno son dos puntos (§9.5)
 };
+
+const ENLACE_VALOR = { 'n': 'n', 'm': 'm', 'n+m': 'nm', 'n2': 'n2', 'm2': 'm2', 'n2+m2': 'n2m2' };   // código de cada valor en el enlace ?p= (§8.10)
 
 function enteroEntre(valor, minimo, maximo) {
   return Number.isInteger(valor) && valor >= minimo && valor <= maximo;
@@ -1251,6 +1409,48 @@ class Partida {
 
   serializar() {
     return JSON.stringify({ v: 1, opciones: this.#opciones, jugadas: this.#jugadas.map(Partida.#sinAristas), rehacer: this.#rehacer.map(Partida.#sinAristas) });
+  }
+
+  // Enlace con la partida (§8.10, §9.1, §9.5): el valor del parámetro `p` (sin «?p=»), con el historial a dos caracteres por acción.
+  // Versión 2; con «dos puntos por turno» la 3, que añade `turnos` después de `desempate`. La pila de rehacer no se incluye.
+  enlace() {
+    const o = this.#opciones, dos = o.turnos === '122';
+    const campos = [dos ? 3 : 2, o.columnas, o.filas, o.jugadores, o.bloqueadores ? 1 : 0, o.cruces === 'permitidos' ? 'p' : 'x',
+      o.puntuacion === 'mayor' ? 'm' : 's', ENLACE_VALOR[o.valor], o.desempate === 'segundo' ? 's' : 'n'];
+    if (dos) campos.push('d');
+    campos.push(o.empieza);
+    campos.push(this.#jugadas.map(j => (j.accion === 'rendirse' ? 'zz' : (j.fila * o.columnas + j.columna).toString(36).padStart(2, '0'))).join(''));
+    return campos.join('.');
+  }
+
+  // Lee el valor de `p` y devuelve la partida: opciones del enlace, todos personas, historial repetido (lo que de paso lo valida). Lanza si no vale.
+  static desdeEnlace(texto) {
+    const campos = typeof texto === 'string' ? texto.split('.') : [];
+    const version = campos[0];
+    if (!['1', '2', '3'].includes(version)) throw new Error('versión de enlace desconocida');
+    if (campos.length !== (version === '1' ? 10 : version === '2' ? 11 : 12)) throw new Error('enlace mal formado');
+    const [, columnas, filas, jugadores, bloqueadores, cruces, puntuacion, valor, ...resto] = campos;
+    const acciones = resto.pop(), empieza = resto.pop();
+    const desempate = version === '1' ? 'n' : resto[0], turnos = version === '3' ? resto[1] : 'n';
+    const entero = t => (/^\d{1,2}$/.test(t) ? Number(t) : NaN);
+    const elegir = (t, tabla) => { if (!Object.hasOwn(tabla, t)) throw new Error('opción de enlace no válida'); return tabla[t]; };
+    const p = new Partida({
+      columnas: entero(columnas), filas: entero(filas), jugadores: entero(jugadores), empieza: entero(empieza),
+      bloqueadores: elegir(bloqueadores, { 0: false, 1: true }), cruces: elegir(cruces, { p: 'permitidos', x: 'prohibidos' }),
+      puntuacion: elegir(puntuacion, { m: 'mayor', s: 'suma' }),
+      valor: elegir(valor, Object.fromEntries(Object.entries(ENLACE_VALOR).map(([largo, corto]) => [corto, largo]))),
+      desempate: elegir(desempate, { n: 'ninguno', s: 'segundo' }), turnos: elegir(turnos, { n: 'normal', d: '122' }),
+    });
+    if (!/^([0-9a-z]{2})*$/.test(acciones)) throw new Error('acciones de enlace mal formadas');
+    for (let i = 0; i < acciones.length; i += 2) {
+      const par = acciones.slice(i, i + 2), indice = parseInt(par, 36);
+      let r;
+      if (par === 'zz') r = p.rendirse();
+      else if (indice >= p.columnas * p.filas) throw new Error('casilla fuera del tablero');
+      else r = p.jugar(indice % p.columnas, Math.floor(indice / p.columnas));
+      if (!r.ok) throw new Error('acción no válida en el enlace');
+    }
+    return p;
   }
 
   // Datos de la partida (§7): { vacias, jugadores: [{ restantes, maximo, perdido }, …] }. No muta la partida.
@@ -1746,7 +1946,11 @@ class Maquina {
     if (partida.terminada) return null;
     const inicio = performance.now(), rnd = this._aleatorio, est = Estado.desdePartida(partida), perfil = PERFILES[this._nivel];
     let celda;
-    if (perfil.busqueda) {
+    // Con «suma», los niveles de búsqueda bloquean como el medio sin ruido: la mejor casilla del rival según la heurística.
+    // Las partidas de prueba casi nunca castigan un mal bloqueo y la búsqueda elegía entre los buenos casi al azar
+    // (tarea 30, hallazgo 4: el difícil perdía con el medio con «suma · m» y «suma · n + m»).
+    if (perfil.busqueda && est.suma && est.accion === BLOQUEAR) celda = candidatos(est, rnd, 0, est.vacias)[0];
+    else if (perfil.busqueda) {
       const raiz0 = perfil.reutilizar && this._previo ? bajar(this._previo, est) : null;
       celda = buscar(est, rnd, this._tiempoMaximo * UNIDADES_POR_MS, inicio + this._tiempoMaximo * TOPE_RELOJ, raiz0);
       if (perfil.reutilizar) this._previo = { est, raiz: ultimaRaiz };
@@ -1762,6 +1966,9 @@ class Maquina {
   sugerir(partida, maximo = 3) {
     if (partida.terminada) return [];
     if (!PERFILES[this._nivel].busqueda) return [{ ...this.elegir(partida), visitas: null, valor: null }];
+    // Con «suma» al bloquear, la pista es la jugada de `elegir` sola, como la máquina (§7.2).
+    const est = Estado.desdePartida(partida);
+    if (est.suma && est.accion === BLOQUEAR) return [{ ...this.elegir(partida), visitas: null, valor: null }];
     return sugerirDesdeRaiz(partida, maximo, this._aleatorio, this._tiempoMaximo);
   }
   // Probabilidad de ganar de cada jugador (§7.1) según N partidas de prueba; null si la partida terminó.
@@ -1811,14 +2018,17 @@ function sugerirDesdeRaiz(partida, maximo, aleatorio, tiempoMaximo) {
 
 const U = 100;                // lado de la casilla en unidades del viewBox
 const RADIO = 22;             // radio del punto (diámetro ≈ 0,44 del lado)
+const RADIO_PIZARRA = 32;     // radio del punto en el modo pizarra (§8.6: ≈ 0,32 del lado)
+let radio = RADIO;            // el que se usa ahora
 const LADO_MAXIMO = 120;      // píxeles por casilla, como mucho
 const RETRASO_FIN = 600;      // ms antes de tapar el tablero al acabar, para ver la última jugada
 const DEMO = [[2, 2], [7, 1], [6, 3], [3, 2], [3, 3], [5, 3], [6, 4], [4, 4], [2, 3], [7, 4], [5, 5], [1, 2], [1, 4], [6, 5], [7, 2], [0, 5], [0, 3], [8, 3], [8, 1], [1, 3]];
-const CLAVE = { partida: 'conecta-puntos.partida', opciones: 'conecta-puntos.opciones', tema: 'conecta-puntos.tema', sonido: 'conecta-puntos.sonido', datos: 'conecta-puntos.datos', contador: 'conecta-puntos.contador' };
-const DATOS = ['vacias', 'restantes', 'maximo', 'probabilidad', 'pista'];   // datos de la partida que se pueden mostrar (§7); todos apagados por defecto
+const CLAVE = { partida: 'conecta-puntos.partida', opciones: 'conecta-puntos.opciones', tema: 'conecta-puntos.tema', sonido: 'conecta-puntos.sonido', datos: 'conecta-puntos.datos', contador: 'conecta-puntos.contador', pizarra: 'conecta-puntos.pizarra' };
+const DATOS = ['vacias', 'restantes', 'maximo', 'probabilidad', 'pista', 'valores'];   // datos de la partida que se pueden mostrar (§7); todos apagados por defecto
 const datosTodos = new URLSearchParams(location.search).get('datos') === 'todos';   // ?datos=todos: los enciende sin guardar nada (pruebas y capturas)
 const LIMITES = { jugadores: [2, 4], columnas: [4, 16], filas: [4, 16] };
-const OPCIONES_DEFECTO = { jugadores: 2, columnas: 10, filas: 7, bloqueadores: true, cruces: 'permitidos', puntuacion: 'mayor', valor: 'n', desempate: 'ninguno', turnos: 'normal', tipos: ['persona', 'persona', 'persona', 'persona'], niveles: ['medio', 'medio', 'medio', 'medio'] };
+const OPCIONES_DEFECTO = { jugadores: 2, columnas: 10, filas: 7, bloqueadores: true, cruces: 'permitidos', puntuacion: 'mayor', valor: 'n', desempate: 'ninguno', turnos: 'normal', empieza: 1, tipos: ['persona', 'persona', 'persona', 'persona'], niveles: ['medio', 'medio', 'medio', 'medio'], nombres: ['', '', '', ''] };
+const NOMBRE_MAX = 12;         // caracteres de un nombre de jugador (§8.8)
 const REGLAS_UI = { cruces: ['permitidos', 'prohibidos'], puntuacion: ['mayor', 'suma'], valor: ['n', 'm', 'n+m', 'n2', 'm2', 'n2+m2'], turnos: ['normal', '122'] };
 // Modos de juego (§9.2): se deducen de las reglas, no se guardan. El orden es el del selector.
 const MODOS = {
@@ -1839,6 +2049,8 @@ const NIVELES_MAQUINA = ['principiante', 'muyfacil', 'facil', 'medio', 'dificil'
 const RETRASO_MAQUINA = { marcar: 600, bloquear: 500 };   // ms de pausa antes de cada acción de la máquina, para que se vea la jugada anterior
 
 const demo = new URLSearchParams(location.search).get('demo');   // null si no hay ?demo=
+const enlaceP = new URLSearchParams(location.search).get('p');   // null si no hay ?p= (partida compartida, §8.10)
+let sinGuardar = demo !== null;   // con ?demo= o un ?p= válido no se guarda nada: ni partida, ni opciones, ni contador (§8.10)
 const movimientoReducido = matchMedia('(prefers-reduced-motion: reduce)');
 const animar = () => !movimientoReducido.matches;
 const $ = id => document.getElementById(id);
@@ -1846,6 +2058,7 @@ const el = {
   svg: $('svg'), zona: $('zona'), tablero: $('tablero'), marcador: $('marcador'),
   estado: $('estado'), estadoPieza: $('estado-pieza'), estadoTexto: $('estado-texto'), estadoVariante: $('estado-variante'), verResultado: $('ver-resultado'), continuar: $('continuar'), variantes: $('variantes'), quienes: $('quienes'),
   aviso: $('aviso'), fin: $('fin'), finResultado: $('fin-resultado'), finPuntos: $('fin-puntos'), finContador: $('fin-contador'), acciones: document.querySelector('.acciones'),
+  pizarra: $('pizarra'), salirPizarra: $('salir-pizarra'), repaso: $('repaso'), repasoTexto: $('repaso-texto'),
   datos: $('datos'), dialogoDatos: $('dialogo-datos'), pista: $('pista'), anuncio: $('anuncio'),
   deshacer: $('deshacer'), rehacer: $('rehacer'), rendirse: $('rendirse'), dialogoRendirse: $('dialogo-rendirse'), sonido: $('sonido'), tema: $('tema'),
   dialogoNueva: $('dialogo-nueva'), formNueva: $('form-nueva'), dialogoConfirmar: $('dialogo-confirmar'), dialogoAyuda: $('dialogo-ayuda'),
@@ -1856,6 +2069,8 @@ let datos;                     // qué datos de la partida se muestran: { vacias
 let perdidasAvisadas = new Set();   // jugadores a los que ya se les ha dicho en esta partida que no pueden ganar
 let sinAvisarPerdidas = false; // mientras se monta una partida (nueva o restaurada) solo se anota quién está perdido, sin avisar
 let opciones;                  // últimas opciones elegidas en «Nueva partida»
+const parametroPizarra = new URLSearchParams(location.search).get('pizarra');   // ?pizarra=1 o =0 fuerza el modo sin guardar nada (§8.6)
+let pizarra = parametroPizarra === '1' || (parametroPizarra !== '0' && leer(CLAVE.pizarra) === '1');   // modo pizarra encendido
 let capas;                     // grupos del SVG que se repintan en cada jugada
 let finOculto = false;         // el usuario ha cerrado el panel de fin con «Ver tablero»
 let temporizadorFin = 0;       // distinto de 0 mientras el panel de fin espera su turno
@@ -1873,28 +2088,41 @@ const todasMaquinas = () => tipos.slice(0, partida.jugadores).every(t => t === '
 // Con personas y máquinas mezcladas, Deshacer necesita alguna acción de una persona que retirar: si la máquina abrió y la
 // persona aún no ha jugado, retirar la apertura solo haría que la máquina abriera otra vez, en otro sitio.
 const puedeDeshacerAhora = () => partida.puedeDeshacer && (todasMaquinas() || partida.jugadas.some(j => !esMaquina(j.jugador)));
-const nombreJugador = j => `Jugador ${j}${esMaquina(j) ? ' (máquina)' : ''}`;
-const nombreCorto = j => `Jugador ${j}`;   // sin «(máquina)»: para el aviso de la revancha y el contador
+let nombres = ['', '', '', ''];   // nombre de cada jugador (§8.8); '' = «Jugador N»
+const nombrePropio = j => (nombres[j - 1] === `Jugador ${j}` ? '' : nombres[j - 1] || '');   // '' si no tiene uno suyo
+const nombreBase = j => nombrePropio(j) || `Jugador ${j}`;
+const nombreJugador = j => `${nombreBase(j)}${esMaquina(j) ? ' (máquina)' : ''}`;
+const nombreCorto = nombreBase;   // sin «(máquina)»: para el aviso de la revancha y el contador
+// Sujeto de una frase: «el jugador 2» con el nombre de siempre (los textos de hoy), «Ana» con uno propio.
+const sujetoCorto = j => nombrePropio(j) || `el jugador ${j}`;
+const sujeto = j => `${sujetoCorto(j)}${esMaquina(j) ? ' (máquina)' : ''}`;
+const mayuscula = t => t.charAt(0).toUpperCase() + t.slice(1);
 
 // ---------- almacenamiento (siempre protegido; en modo demo no se guarda nada) ----------
 function leer(clave) {
   try { return localStorage.getItem(clave); } catch { return null; }
 }
 function guardar(clave, valor) {
-  if (demo !== null) return;
+  if (sinGuardar) return;
   try {
     if (valor === null) localStorage.removeItem(clave); else localStorage.setItem(clave, valor);
   } catch { /* sin almacenamiento: la página sigue funcionando */ }
 }
 function acotar(valor, minimo, maximo) { return Math.min(maximo, Math.max(minimo, valor)); }
+// Nombre de jugador (§8.8): sin espacios en los extremos y de 12 caracteres como mucho; '' equivale a «Jugador N».
+const limpiarNombre = v => (typeof v === 'string' ? [...v.trim()].slice(0, NOMBRE_MAX).join('').trim() : '');
+const escapar = texto => texto.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function normalizarOpciones(o) {
   if (o.puntuacion === 'suma' && o.valor === 'n') o = { ...o, valor: 'n2' };   // «suma · n» ya no se ofrece (§9.2)
   const entero = (v, [minimo, maximo], defecto) => {
     const n = Math.round(Number(v));
     return Number.isFinite(n) ? acotar(n, minimo, maximo) : defecto;
   };
+  const jugadores = entero(o.jugadores, LIMITES.jugadores, OPCIONES_DEFECTO.jugadores);
+  const empieza = o.empieza === 'azar' ? 'azar' : (n => (Number.isInteger(n) && n >= 1 && n <= jugadores ? n : 1))(Number(o.empieza));   // quién empieza (§8.3): 1..jugadores o 'azar'; fuera de rango, el 1
   return {
-    jugadores: entero(o.jugadores, LIMITES.jugadores, OPCIONES_DEFECTO.jugadores),
+    jugadores,
+    empieza,
     columnas: entero(o.columnas, LIMITES.columnas, OPCIONES_DEFECTO.columnas),
     filas: entero(o.filas, LIMITES.filas, OPCIONES_DEFECTO.filas),
     bloqueadores: Boolean(o.bloqueadores) && o.turnos !== '122',   // con «dos puntos por turno» no hay bloqueadores (§9.5)
@@ -1905,6 +2133,7 @@ function normalizarOpciones(o) {
     turnos: o.turnos === '122' ? '122' : 'normal',
     tipos: Array.from({ length: 4 }, (_, i) => (Array.isArray(o.tipos) && o.tipos[i] === 'maquina' ? 'maquina' : 'persona')),
     niveles: Array.from({ length: 4 }, (_, i) => (Array.isArray(o.niveles) && NIVELES_MAQUINA.includes(o.niveles[i]) ? o.niveles[i] : 'medio')),
+    nombres: Array.from({ length: 4 }, (_, i) => limpiarNombre(Array.isArray(o.nombres) ? o.nombres[i] : '')),
   };
 }
 // Datos de la partida (§7.3): cualquier valor que no sea `true` (clave que falta, campo ausente o no booleano) es apagado.
@@ -1932,11 +2161,12 @@ function textoVariante() {
   const modo = modoDe({ ...partida.reglas, bloqueadores: partida.bloqueadores });
   if (modo === 'clasico') return '';
   if (modo === 'equilibrado') return 'Modo equilibrado';
-  if (modo === 'competir') return 'Modo para competir';
+  if (modo === 'competir') return 'Modo competir';
   return descripcionReglas(partida.reglas);
 }
 // Las opciones de la partida para el motor: el desempate solo existe con 2 jugadores (§9.2).
-const opcionesDeMotor = o => ({ ...o, desempate: o.jugadores === 2 ? o.desempate : 'ninguno' });
+// «Al azar» se sortea entre todos los jugadores al empezar (§8.3).
+const opcionesDeMotor = o => ({ ...o, desempate: o.jugadores === 2 ? o.desempate : 'ninguno', empieza: o.empieza === 'azar' ? 1 + Math.floor(Math.random() * o.jugadores) : o.empieza });
 function leerOpciones() {
   let guardadas = null;
   try { guardadas = JSON.parse(leer(CLAVE.opciones)); } catch { /* sin opciones guardadas */ }
@@ -2048,7 +2278,7 @@ const formaDe = j => (partida.jugadores >= 3 ? (j - 1) % 4 : 0);
 const num = n => Math.round(n * 100) / 100;
 // Pieza de un jugador centrada en (x, y); `k` la agranda (el anillo de la última jugada y el contorno de la pista) conservando la forma.
 function pieza(j, x, y, clase, atributos = '', k = 1) {
-  const r = RADIO * k, forma = formaDe(j), comun = `class="${clase} forma-${FORMAS[forma]}" ${atributos}`;
+  const r = radio * k, forma = formaDe(j), comun = `class="${clase} forma-${FORMAS[forma]}" ${atributos}`;
   if (forma === 1) { const l = 1.77 * r; return `<rect ${comun} x="${num(x - l / 2)}" y="${num(y - l / 2)}" width="${num(l)}" height="${num(l)}" rx="${num(0.15 * l)}"/>`; }
   if (forma === 2) { const d = 1.77 * r / Math.SQRT2; return `<polygon ${comun} points="${num(x)},${num(y - d)} ${num(x + d)},${num(y)} ${num(x)},${num(y + d)} ${num(x - d)},${num(y)}"/>`; }
   if (forma === 3) { const a = 1.345 * r, arriba = y - 1.553 * r, abajo = y + 0.776 * r; return `<polygon ${comun} points="${num(x)},${num(arriba)} ${num(x + a)},${num(abajo)} ${num(x - a)},${num(abajo)}"/>`; }
@@ -2071,9 +2301,9 @@ function montarTablero() {
     `<g id="capa-bloqueadores"></g>` +
     `<path class="rejilla" d="${rejilla}" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>` +
     `<g id="capa-lineas"></g><g id="capa-puntos"></g><g id="capa-ultima" class="ultima"></g>` +
-    `<g id="capa-sombra" class="sombra"></g><g id="capa-pista" class="pista"></g>` +
+    `<g id="capa-sombra" class="sombra"></g><g id="capa-pista" class="pista"></g><g id="capa-valores" class="valores"></g>` +
     `<rect id="cursor" class="cursor" width="${U}" height="${U}" rx="8"/>`;
-  capas = { bloqueadores: $('capa-bloqueadores'), lineas: $('capa-lineas'), puntos: $('capa-puntos'), ultima: $('capa-ultima'), sombra: $('capa-sombra'), pista: $('capa-pista'), cursor: $('cursor') };
+  capas = { bloqueadores: $('capa-bloqueadores'), lineas: $('capa-lineas'), puntos: $('capa-puntos'), ultima: $('capa-ultima'), sombra: $('capa-sombra'), pista: $('capa-pista'), valores: $('capa-valores'), cursor: $('cursor') };
 }
 
 const GANANCIA_GIRO = 1.15;    // el tablero gira si así la casilla sale al menos 1,15 veces mayor (§8.5)
@@ -2106,6 +2336,7 @@ function ajustarTamano(inicio) {
     else { girar(quiereGirar); return ajustarTamano(); }
   }
   const lado = girado ? vuelto : normal;
+  if (lado !== ladoPantalla) { ladoPantalla = lado; pintarValores(); }
   el.tablero.style.width = `${lado * (girado ? partida.filas : partida.columnas)}px`;
   el.tablero.style.height = `${lado * (girado ? partida.columnas : partida.filas)}px`;
   // Trazo de la última jugada: 0,06 de casilla y, como mínimo, 2 px de pantalla (§8.1).
@@ -2142,7 +2373,7 @@ function pintarUltima(fundido) {
   }
   if (punto) {
     const [x, y] = centro(punto.columna, punto.fila);
-    html += pieza(punto.jugador, x, y, `ultima-punto ${claseJugador(punto.jugador)}${clase}`, `data-columna="${punto.columna}" data-fila="${punto.fila}" stroke-width="${trazoUltima}"`, (RADIO + 0.12 * U) / RADIO);
+    html += pieza(punto.jugador, x, y, `ultima-punto ${claseJugador(punto.jugador)}${clase}`, `data-columna="${punto.columna}" data-fila="${punto.fila}" stroke-width="${trazoUltima}"`, (radio + 0.12 * U) / radio);
   }
   capas.ultima.innerHTML = html;
 }
@@ -2180,6 +2411,33 @@ function pintarPiezas(nueva) {
   capas.bloqueadores.innerHTML = bloqueadores;
   capas.lineas.innerHTML = bordes + lineas;
   capas.puntos.innerHTML = puntos;
+  pintarValores();
+}
+
+// Valor de cada grupo (§8.7): una etiqueta por grupo de 2 o más puntos, junto al punto que queda más arriba en pantalla
+// (si empatan, el de más a la derecha), con el valor que da la regla `valor` a su n y su m.
+let ladoPantalla = 0;          // píxeles por casilla, lo fija ajustarTamano (0 mientras no se sabe)
+function pintarValores() {
+  if (!datos.valores) { capas.valores.innerHTML = ''; return; }
+  const lado = ladoPantalla || U, ancho = (girado ? partida.filas : partida.columnas) * U, alto = (girado ? partida.columnas : partida.filas) * U;
+  const letra = Math.max((pizarra ? 0.34 : 0.28) * U, 11 * U / lado);   // en unidades del viewBox: 0,28 de casilla y, como mínimo, 11 px
+  const valor = partida.reglas.valor;
+  let html = '';
+  for (const g of partida.grupos()) {
+    if (g.casillas.length < 2) continue;
+    let mejor = null;
+    for (const [c, f] of g.casillas) {
+      const [x, y] = centro(c, f);
+      if (!mejor || y < mejor[1] || (y === mejor[1] && x > mejor[0])) mejor = [x, y];
+    }
+    const texto = String(Partida.valorGrupo(g.casillas.length, g.aristas, valor));
+    const h = 1.4 * letra, w = Math.max(h, texto.length * 0.62 * letra + 0.7 * letra);
+    // esquina inferior izquierda de la etiqueta en el borde superior derecho del punto, dentro del tablero
+    const x = acotar(mejor[0] + 0.7 * radio, 0, ancho - w), y = acotar(mejor[1] - 0.7 * radio - h, 0, alto - h);
+    html += `<g class="valor-grupo ${claseJugador(g.jugador)}" data-valor="${texto}"><rect x="${num(x)}" y="${num(y)}" width="${num(w)}" height="${num(h)}" rx="${num(0.3 * h)}"/>` +
+      `<text x="${num(x + w / 2)}" y="${num(y + h / 2)}" font-size="${num(letra)}">${texto}</text></g>`;
+  }
+  capas.valores.innerHTML = html;
 }
 
 // Con ratón o lápiz, muestra en tenue lo que se va a poner en la casilla vacía bajo el puntero.
@@ -2214,9 +2472,9 @@ function pintarMarcador(est) {
     const rendida = partida.rendidos.includes(j);
     const sube = conAnimacion && n > puntuacionesVistas[i];
     const extra = rendida || partida.terminada ? '' : textoDatos(est.jugadores[i]);
-    const prob = datos.probabilidad && !rendida && !partida.terminada ? `<span class="prob" data-j="${j}" aria-hidden="true"><span class="barra"><i></i></span><span class="pct"></span></span>` : '';
+    const prob = datos.probabilidad && !repaso && !rendida && !partida.terminada ? `<span class="prob" data-j="${j}" aria-hidden="true"><span class="barra"><i></i></span><span class="pct"></span></span>` : '';
     return `<li class="ficha ${claseJugador(j)}${activa ? ' activa' : ''}${ganadora ? ' ganadora' : ''}${rendida ? ' rendida' : ''}"${activa ? ' aria-current="true"' : ''}>` +
-      `<span class="bolita" aria-hidden="true"></span><span class="textos"><span class="nombre">Jugador ${j}${esMaquina(j) ? ' <small class="maquina-etiqueta">máquina</small>' : ''}${rendida ? ' <small class="maquina-etiqueta">se rindió</small>' : ''}</span>${extra ? `<span class="datos">${extra}</span>` : ''}${prob}</span><span class="cifra${sube ? ' sube' : ''}">${n}</span></li>`;
+      `<span class="bolita" aria-hidden="true"></span><span class="textos"><span class="nombre">${escapar(nombreBase(j))}${esMaquina(j) ? ' <small class="maquina-etiqueta">máquina</small>' : ''}${rendida ? ' <small class="maquina-etiqueta">se rindió</small>' : ''}</span>${extra ? `<span class="datos">${extra}</span>` : ''}${prob}</span><span class="cifra${sube ? ' sube' : ''}">${n}</span></li>`;
   }).join('');
   puntuacionesVistas = p;
   pintarProbabilidades();
@@ -2255,15 +2513,16 @@ const enumerar = lista => (lista.length === 2 ? `${lista[0]} y ${lista[1]}` : `$
 function textoResultado() {
   const g = partida.ganadores, maximo = partida.puntuaciones[g[0] - 1];
   if (partida.vacias > 0) {
-    const quien = nombreJugador(g[0]).replace('Jugador', 'jugador'), rendidos = partida.rendidos;
-    return `Gana el ${quien}: ` + (rendidos.length === 1 ? `el jugador ${rendidos[0]} se rindió` : 'los demás se han rendido');
+    const rendidos = partida.rendidos;
+    return `Gana ${sujeto(g[0])}: ` + (rendidos.length === 1 ? `${sujetoCorto(rendidos[0])} se rindió` : 'los demás se han rendido');
   }
-  const quienGana = nombreJugador(g[0]).replace('Jugador', 'jugador');
+  const quienGana = sujeto(g[0]);
   if (g.length === 1 && partida.reglas.desempate === 'segundo' && partida.puntuaciones[0] === partida.puntuaciones[1]) {
-    return `Empate a ${puntosTexto(maximo)}: gana el ${quienGana} por desempate`;
+    return `Empate a ${puntosTexto(maximo)}: gana ${quienGana} por desempate`;
   }
-  if (g.length === 1) return `Gana el ${quienGana} con ${puntosTexto(maximo)}`;
-  return `Empate a ${puntosTexto(maximo)}` + (g.length < partida.jugadores ? ` entre los jugadores ${enumerar(g)}` : '');
+  if (g.length === 1) return `Gana ${quienGana} con ${puntosTexto(maximo)}`;
+  const entre = g.every(j => !nombrePropio(j)) ? `entre los jugadores ${enumerar(g)}` : `entre ${enumerar(g.map(nombreCorto))}`;
+  return `Empate a ${puntosTexto(maximo)}` + (g.length < partida.jugadores ? ` ${entre}` : '');
 }
 
 function pintarEstado() {
@@ -2278,7 +2537,8 @@ function pintarEstado() {
     pieza = marcar ? 'punto-mini' : 'bloqueador-mini';
     // Textos cortos: en móviles de 360-390 px deben caber en una línea para que el tablero no salte en cada turno.
     const quien = nombreJugador(partida.jugador);
-    texto = pausada ? `${quien} · en pausa`
+    texto = repaso ? `Le toca a ${quien}`
+      : pausada ? `${quien} · en pausa`
       : esMaquina(partida.jugador) ? `${quien} piensa…`
       : `${quien}: ${!marcar ? 'pon un bloqueador' : partida.segundoPunto ? 'pon tu segundo punto' : 'pon tu punto'}`;
   }
@@ -2294,14 +2554,14 @@ function pintarEstado() {
 }
 
 function pintarFin() {
-  const mostrar = partida.terminada && !finOculto && !temporizadorFin;
+  const mostrar = partida.terminada && !finOculto && !temporizadorFin && !repaso;
   el.fin.hidden = !mostrar;
-  el.verResultado.hidden = !(partida.terminada && finOculto);
+  el.verResultado.hidden = !(partida.terminada && finOculto) || repaso;
   if (!mostrar) return;
   el.finResultado.textContent = textoResultado();
   el.finPuntos.innerHTML = partida.puntuaciones.map((n, i) => {
     const j = i + 1;
-    return `<li class="${claseJugador(j)}${partida.ganadores.includes(j) ? ' ganador' : ''}"><span class="bolita" aria-hidden="true"></span>${nombreJugador(j)}${partida.rendidos.includes(j) ? ' (se rindió)' : ''}: <strong>${puntosTexto(n)}</strong></li>`;
+    return `<li class="${claseJugador(j)}${partida.ganadores.includes(j) ? ' ganador' : ''}"><span class="bolita" aria-hidden="true"></span>${escapar(nombreJugador(j))}${partida.rendidos.includes(j) ? ' (se rindió)' : ''}: <strong>${puntosTexto(n)}</strong></li>`;
   }).join('');
   const total = contador ? contador.victorias.reduce((a, b) => a + b, contador.empates) : 0;
   el.finContador.hidden = !total;
@@ -2316,14 +2576,14 @@ function pintarFin() {
 let contador = null;           // { jugadores: [{ tipo, nivel, nombre }], victorias: [n, …], empates } o null
 let contada = true;            // la partida en curso ya está contada (o no cuenta)
 function listaJugadores() {
-  return Array.from({ length: partida.jugadores }, (_, i) => ({ tipo: tipos[i], nivel: tipos[i] === 'maquina' ? niveles[i] : null, nombre: '' }));
+  return Array.from({ length: partida.jugadores }, (_, i) => ({ tipo: tipos[i], nivel: tipos[i] === 'maquina' ? niveles[i] : null, nombre: nombres[i] }));
 }
 function guardarContador() {
   guardar(CLAVE.contador, JSON.stringify(contador));
 }
 function prepararContador() {
   contador = null;
-  if (demo !== null) return;
+  if (sinGuardar) return;
   const lista = listaJugadores();
   let guardado = null;
   try { guardado = JSON.parse(leer(CLAVE.contador)); } catch { /* sin contador guardado */ }
@@ -2421,13 +2681,13 @@ function revisarPerdidas(est) {
     if (est.jugadores[j - 1].perdido !== true || partida.rendidos.includes(j) || perdidasAvisadas.has(j)) continue;
     perdidasAvisadas.add(j);
     if (avisar_ && !esMaquina(j)) {
-      const texto = `Jugador ${j}: ya no puedes ganar. Puedes rendirte o seguir jugando.`;
+      const texto = `${nombreCorto(j)}: ya no puedes ganar. Puedes rendirte o seguir jugando.`;
       setTimeout(() => avisar(texto, 3000, true), 0);   // después de pintar la jugada y de su aviso de puntuación
     }
   }
 }
 function guardarPartida() {
-  guardar(CLAVE.partida, JSON.stringify({ partida: partida.serializar(), tipos, niveles }));
+  guardar(CLAVE.partida, JSON.stringify({ partida: partida.serializar(), tipos, niveles, nombres }));
 }
 
 function cancelarFin() {
@@ -2450,6 +2710,7 @@ function establecer(nueva, quienes = opciones) {
   juegoMaquina++;
   tipos = quienes.tipos.slice();
   niveles = quienes.niveles.slice();
+  nombres = quienes.nombres.slice();
   maquinas = new Map();
   for (let j = 1; j <= partida.jugadores; j++) {
     if (esMaquina(j)) {
@@ -2465,7 +2726,7 @@ function establecer(nueva, quienes = opciones) {
   puntuacionesVistas = partida.puntuaciones;
   document.querySelector('.app').classList.toggle('con-formas', partida.jugadores >= 3);
   prepararContador();
-  contada = demo !== null || partida.terminada;
+  contada = sinGuardar || partida.terminada;
   girado = false;   // se vuelve a decidir al medir (§8.5)
   montarTablero();
   perdidasAvisadas = new Set();
@@ -2615,7 +2876,7 @@ function jugar(c, f) {
     // Como en Scratch, se celebra cuando una jugada conecta puntos y sube la puntuación; un punto suelto, no.
     if (r.mejora && r.conexiones.length > 0) {
       sonido.logro();
-      avisar(`¡El jugador ${r.jugador} ya tiene ${puntosTexto(r.puntuacion)}!`);
+      avisar(`¡${mayuscula(sujetoCorto(r.jugador))} ya tiene ${puntosTexto(r.puntuacion)}!`);
     }
   }
   programarMaquina();
@@ -2655,13 +2916,13 @@ el.continuar.addEventListener('click', () => {
 
 // Solo `click`: un toque genera un único click, así no hay doble disparo touch + click.
 el.svg.addEventListener('click', evento => {
-  if (performance.now() < ignorarTableroHasta) return;   // segundo clic de un doble clic sobre un botón que acaba de desaparecer
+  if (repaso || performance.now() < ignorarTableroHasta) return;   // segundo clic de un doble clic sobre un botón que acaba de desaparecer
   if (esMaquina(partida.jugador) && !partida.terminada) return;   // le toca a la máquina
   const casilla = casillaEn(evento);
   if (casilla) jugar(casilla[0], casilla[1]);
 });
 el.svg.addEventListener('pointermove', evento => {
-  if (evento.pointerType === 'touch') return;   // con dedo no hay hover
+  if (repaso || evento.pointerType === 'touch') return;   // con dedo no hay hover; en la repetición tampoco
   const casilla = casillaEn(evento);
   if (mismaCasilla(casilla, hover)) return;
   hover = casilla;
@@ -2699,6 +2960,7 @@ function ocultarCursor() {
 }
 const FLECHAS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 el.svg.addEventListener('keydown', evento => {
+  if (repaso) return;   // en la repetición las flechas recorren las jugadas (más abajo)
   if (FLECHAS[evento.key]) {
     evento.preventDefault();
     moverCursor(...FLECHAS[evento.key]);
@@ -2711,7 +2973,7 @@ el.svg.addEventListener('keydown', evento => {
 el.svg.addEventListener('blur', ocultarCursor);
 document.addEventListener('keydown', evento => {
   if (!(evento.ctrlKey || evento.metaKey) || evento.altKey || evento.key.toLowerCase() !== 'z') return;
-  if (document.querySelector('dialog[open]:not(.panel-datos)')) return;
+  if (repaso || document.querySelector('dialog[open]:not(.panel-datos)')) return;
   evento.preventDefault();
   if (evento.shiftKey) rehacer(); else deshacer();
 });
@@ -2751,6 +3013,101 @@ el.verResultado.addEventListener('click', () => {
   $('titulo-fin').focus({ preventScroll: true });
 });
 
+// ---------- compartir y repetición (§8.10) ----------
+// Compartir: el menú del sistema si existe; si no, o si falla, el portapapeles con «Enlace copiado»; si tampoco, un cuadro con el enlace.
+function urlPartida() {
+  return location.href.split(/[?#]/)[0] + '?p=' + (partidaReal || partida).enlace();
+}
+async function compartir() {
+  const url = urlPartida();
+  try {
+    if (navigator.share) { await navigator.share({ title: 'Conecta puntos', text: 'Partida de Conecta puntos', url }); return; }
+  } catch (error) {
+    if (error && error.name === 'AbortError') return;   // el usuario canceló: no se insiste
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    avisar('Enlace copiado');
+  } catch {
+    $('texto-enlace').value = url;
+    $('dialogo-enlace').showModal();
+    $('texto-enlace').select();
+  }
+}
+$('compartir').addEventListener('click', compartir);
+$('fin-compartir').addEventListener('click', compartir);
+$('cerrar-enlace').addEventListener('click', () => $('dialogo-enlace').close());
+
+// Repetición: un clon de la partida terminada al que se le deshace todo; ◀ y ▶ lo recorren con deshacer y rehacer. La partida real no se toca ni se guarda.
+let repaso = false;            // modo repetición encendido (`partida` es entonces el clon)
+let partidaReal = null;        // la partida terminada mientras dura la repetición
+function entrarRepaso() {
+  if (repaso || !partida.terminada) return;
+  cancelarFin();
+  partidaReal = partida;
+  partida = partidaReal.clonar();
+  while (partida.deshacer());
+  repaso = true;
+  hover = null;
+  el.repaso.hidden = false;
+  pintarRepaso();
+  ajustarTamano();
+  $('repaso-adelante').focus({ preventScroll: true });
+}
+function salirRepaso() {
+  if (!repaso) return;
+  repaso = false;
+  partida = partidaReal;
+  partidaReal = null;
+  el.repaso.hidden = true;
+  finOculto = false;
+  puntuacionesVistas = partida.puntuaciones;
+  sinAvisarPerdidas = true;
+  pintar();
+  sinAvisarPerdidas = false;
+  ajustarTamano();
+  $('titulo-fin').focus({ preventScroll: true });
+}
+function pintarRepaso(anuncio) {
+  const total = partidaReal.numeroJugadas, k = partida.numeroJugadas;
+  puntuacionesVistas = partida.puntuaciones;
+  pintarPiezas();
+  pintarUltima(false);
+  pintarSombra();
+  pintarMarcador(partida.estadisticas());
+  pintarEstado();
+  el.fin.hidden = true;
+  el.deshacer.disabled = el.rehacer.disabled = el.rendirse.disabled = true;
+  el.repasoTexto.textContent = `Jugada ${k} de ${total}`;
+  $('repaso-inicio').disabled = $('repaso-atras').disabled = k === 0;
+  $('repaso-adelante').disabled = $('repaso-final').disabled = k === total;
+  if (anuncio && k > 0) {
+    const j = partida.jugadas[k - 1], quien = nombreBase(j.jugador);
+    const [c, f] = j.accion === 'rendirse' ? [0, 0] : aPantalla(j.columna, j.fila);
+    const que = j.accion === 'rendirse' ? 'se rinde' : `${j.accion === 'bloquear' ? 'pone un bloqueador' : 'pone'} en columna ${c + 1}, fila ${f + 1}`;
+    el.anuncio.textContent = `Jugada ${k} de ${total}: ${quien} ${que}`;
+  }
+}
+function pasoRepaso(delta) {
+  if (!repaso) return;
+  const destino = acotar(partida.numeroJugadas + delta, 0, partidaReal.numeroJugadas);
+  while (partida.numeroJugadas > destino) partida.deshacer();
+  while (partida.numeroJugadas < destino) partida.rehacer();
+  pintarRepaso(delta === 1 || delta === -1);
+}
+$('fin-repeticion').addEventListener('click', entrarRepaso);
+$('repaso-inicio').addEventListener('click', () => pasoRepaso(-Infinity));
+$('repaso-atras').addEventListener('click', () => pasoRepaso(-1));
+$('repaso-adelante').addEventListener('click', () => pasoRepaso(1));
+$('repaso-final').addEventListener('click', () => pasoRepaso(Infinity));
+$('repaso-salir').addEventListener('click', salirRepaso);
+document.addEventListener('keydown', evento => {
+  if (!repaso || evento.ctrlKey || evento.metaKey || evento.altKey) return;
+  if (document.querySelector('dialog[open]')) return;
+  if (evento.key === 'ArrowLeft') { evento.preventDefault(); pasoRepaso(-1); }
+  else if (evento.key === 'ArrowRight') { evento.preventDefault(); pasoRepaso(1); }
+});
+
 // ---------- nueva partida ----------
 function abrirNueva() {
   const campos = el.formNueva.elements;
@@ -2758,17 +3115,68 @@ function abrirNueva() {
   campos.columnas.value = opciones.columnas;
   campos.filas.value = opciones.filas;
   campos.bloqueadores.value = opciones.bloqueadores ? 'si' : 'no';
-  for (let j = 1; j <= 4; j++) { campos[`tipo${j}`].value = opciones.tipos[j - 1]; campos[`nivel${j}`].value = opciones.niveles[j - 1]; }
+  for (let j = 1; j <= 4; j++) { campos[`tipo${j}`].value = opciones.tipos[j - 1]; campos[`nivel${j}`].value = opciones.niveles[j - 1]; campos[`nombre${j}`].value = opciones.nombres[j - 1]; }
+  campos.empieza.value = String(opciones.empieza);
   actualizarQuienes();
   campos.cruces.value = opciones.cruces;
   campos.puntuacion.value = opciones.puntuacion;
   campos.valor.value = opciones.valor;
   campos.desempate.value = opciones.desempate;
   campos.turnos.value = opciones.turnos;
-  // Abierto solo si el modo es «Personalizado» (§9.2).
+  // «Variantes» se abre solo si el modo es «Personalizado» (§9.2); la primera vez da igual, porque Reglas está plegado.
   el.variantes.open = sincronizarModo() === 'personalizado';
+  abrirBloques();
+  actualizarResumenes();
   el.dialogoNueva.showModal();
+  el.formNueva.scrollTop = 0;
 }
+// Bloques desplegables (§3): la primera vez que se abre el diálogo solo está abierto Jugadores; después, cada bloque
+// (y «Variantes») como lo dejó el jugador al cerrarlo. Se recuerda en memoria, no en localStorage.
+let bloquesRecordados = null;
+const BLOQUES = ['bloque-jugadores', 'bloque-tablero', 'bloque-reglas'];
+function abrirBloques() {
+  if (bloquesRecordados) {
+    for (const id of BLOQUES) $(id).open = bloquesRecordados[id];
+    el.variantes.open = bloquesRecordados.variantes;
+  } else for (const id of BLOQUES) $(id).open = id === 'bloque-jugadores';
+}
+function recordarBloques() {
+  bloquesRecordados = { variantes: el.variantes.open };
+  for (const id of BLOQUES) bloquesRecordados[id] = $(id).open;
+}
+const NOMBRE_MODO = { clasico: 'Clásico', equilibrado: 'Equilibrado', competir: 'Competir' };
+function resumenJugadores() {
+  const c = el.formNueva.elements, n = Number(c.jugadores.value), partes = [];
+  let personas = 0;
+  const empieza = c.empieza.value === 'azar' ? ' · empieza al azar' : c.empieza.value !== '1' ? ` · empieza ${limpiarNombre(c[`nombre${c.empieza.value}`].value) || `Jugador ${c.empieza.value}`}` : '';
+  for (let j = 1; j <= n; j++) {
+    const nombre = limpiarNombre(c[`nombre${j}`].value);
+    if (c[`tipo${j}`].value === 'maquina') partes.push(`${nombre ? nombre + ' · ' : ''}máquina ${c[`nivel${j}`].selectedOptions[0].textContent.toLowerCase()}`);
+    else { personas++; partes.push(nombre || `Jugador ${j}`); }
+  }
+  if (personas === n && partes.every((p, i) => p === `Jugador ${i + 1}`)) return `${n} personas${empieza}`;
+  return partes.join(', ') + empieza;
+}
+function resumenReglas() {
+  const c = el.formNueva.elements, modo = c.modo.value;
+  if (NOMBRE_MODO[modo]) return NOMBRE_MODO[modo];
+  const partes = [c.bloqueadores.value === 'no' ? 'sin bloqueadores' : 'con bloqueadores'];
+  const d = descripcionReglas({ cruces: c.cruces.value, puntuacion: c.puntuacion.value, valor: c.valor.value, desempate: Number(c.jugadores.value) === 2 ? c.desempate.value : 'ninguno', turnos: c.turnos.value });
+  if (d) partes.push(d);
+  return partes.join(' · ');
+}
+function actualizarResumenes() {
+  const c = el.formNueva.elements;
+  actualizarEmpieza();
+  $('resumen-jugadores').textContent = resumenJugadores();
+  $('resumen-tablero').textContent = `${c.columnas.value} × ${c.filas.value}`;
+  $('resumen-reglas').textContent = resumenReglas();
+}
+// Con un instante de espera, para que antes se sincronice el modo (§9.2) y el resumen no se quede atrás.
+el.formNueva.addEventListener('change', () => setTimeout(actualizarResumenes, 0));
+el.formNueva.addEventListener('input', () => setTimeout(actualizarResumenes, 0));
+el.formNueva.addEventListener('click', evento => { if (evento.target.closest('[data-paso]')) setTimeout(actualizarResumenes, 0); });
+el.dialogoNueva.addEventListener('close', recordarBloques);
 // Muestra solo las filas de los jugadores elegidos y el nivel de los que son máquina.
 function actualizarQuienes() {
   const campos = el.formNueva.elements, cuantos = Number(campos.jugadores.value);
@@ -2778,9 +3186,22 @@ function actualizarQuienes() {
     fila.hidden = j > cuantos;
     fila.querySelector('.nivel').hidden = campos[`tipo${j}`].value !== 'maquina';
   }
+  actualizarEmpieza();
+}
+// Fila «Empieza» (§3): un segmento por jugador, con su nombre como etiqueta accesible, y «Al azar». Si el elegido deja de
+// existir (se baja el número de jugadores), vuelve a «1».
+function actualizarEmpieza() {
+  const campos = el.formNueva.elements, cuantos = Number(campos.jugadores.value);
+  for (const radio of campos.empieza) {
+    const j = Number(radio.value);
+    if (!j) continue;
+    radio.parentElement.hidden = j > cuantos;
+    radio.setAttribute('aria-label', limpiarNombre(campos[`nombre${j}`].value) || `Jugador ${j}`);
+  }
+  if (Number(campos.empieza.value) > cuantos) campos.empieza.value = '1';
 }
 // Modo, desempate y valor del diálogo (§9.2). El modo marcado se deduce de las reglas efectivas; con 3-4 jugadores el
-// desempate efectivo es «ninguno» y «Para competir» y la fila «Si hay empate» están desactivados.
+// desempate efectivo es «ninguno» y «Competir» y la fila «Si hay empate» están desactivados.
 function sincronizarModo() {
   const campos = el.formNueva.elements, dos = Number(campos.jugadores.value) === 2, suma = campos.puntuacion.value === 'suma';
   const opcionN = campos.valor.querySelector('option[value="n"]');
@@ -2820,20 +3241,22 @@ el.formNueva.addEventListener('click', evento => {
 function pedirNuevaPartida() {
   if ((partida.puedeDeshacer || partida.puedeRehacer) && !partida.terminada) el.dialogoConfirmar.showModal(); else abrirNueva();
 }
-$('nueva').addEventListener('click', pedirNuevaPartida);
+$('nueva').addEventListener('click', () => { if (repaso) salirRepaso(); pedirNuevaPartida(); });
 $('fin-nueva').addEventListener('click', abrirNueva);
 // Revancha (§8.3): mismas opciones y mismos jugadores, y empieza el siguiente. Sin confirmación: la partida ya ha terminado.
 $('revancha').addEventListener('click', () => {
   if (!partida.terminada) return;
   ignorarTableroHasta = performance.now() + 350;   // el segundo clic de un doble clic no debe jugar en la partida nueva
-  const empieza = partida.empieza % partida.jugadores + 1;
+  // Con 2 jugadores y un ganador (también por desempate o rendición), empieza quien perdió; con empate o más jugadores, se rota.
+  const ganadores = partida.ganadores;
+  const empieza = partida.jugadores === 2 && ganadores.length === 1 ? 3 - ganadores[0] : partida.empieza % partida.jugadores + 1;
   const { columnas, filas, jugadores, bloqueadores, reglas } = partida;
-  establecer(new Partida({ columnas, filas, jugadores, bloqueadores, ...reglas, empieza }), { tipos: tipos.slice(), niveles: niveles.slice() });
+  establecer(new Partida({ columnas, filas, jugadores, bloqueadores, ...reglas, empieza }), { tipos: tipos.slice(), niveles: niveles.slice(), nombres: nombres.slice() });
   avisar(`Empieza ${nombreCorto(empieza)}`);
 });
 $('seguir-jugando').addEventListener('click', () => el.dialogoConfirmar.close());
 $('descartar').addEventListener('click', () => { el.dialogoConfirmar.close(); abrirNueva(); });
-$('cancelar').addEventListener('click', () => el.dialogoNueva.close());
+$('cancelar').addEventListener('click', () => { recordarBloques(); el.dialogoNueva.close(); });
 for (const boton of document.querySelectorAll('[data-paso]')) {
   boton.addEventListener('click', () => {
     const campo = $(boton.dataset.campo);
@@ -2854,12 +3277,17 @@ el.formNueva.addEventListener('submit', evento => {
     valor: campos.valor.value,
     desempate: campos.desempate.value,
     turnos: campos.turnos.value,
+    empieza: campos.empieza.value,
     tipos: [1, 2, 3, 4].map(j => campos[`tipo${j}`].value),
     niveles: [1, 2, 3, 4].map(j => campos[`nivel${j}`].value),
+    nombres: [1, 2, 3, 4].map(j => campos[`nombre${j}`].value),
   });
   guardar(CLAVE.opciones, JSON.stringify(opciones));
+  recordarBloques();
   el.dialogoNueva.close();
-  establecer(new Partida(opcionesDeMotor(opciones)));
+  const nueva = new Partida(opcionesDeMotor(opciones));
+  establecer(nueva);
+  if (nueva.empieza !== 1) avisar(`Empieza ${nombreCorto(nueva.empieza)}`);   // el mismo aviso que la revancha (§8.3)
 });
 
 // ---------- ayuda y cierre de diálogos ----------
@@ -2889,10 +3317,33 @@ function pintarDatos() {
   if (!datos.pista) quitarPista();   // apagar la casilla borra la pista
   pintarMarcador(partida.estadisticas());
   pintarEstado();
+  pintarValores();
   actualizarBotonPista();
   programarProbabilidad();
   ajustarTamano();
 }
+
+// ---------- modo pizarra (§8.6) ----------
+function pintarPizarra() {
+  document.documentElement.classList.toggle('pizarra', pizarra);
+  el.pizarra.setAttribute('aria-pressed', String(pizarra));
+  radio = pizarra ? RADIO_PIZARRA : RADIO;
+}
+function ponerPizarra(valor) {
+  if (valor === pizarra) return;
+  pizarra = valor;
+  if (pizarra) cerrarDatos();
+  if (parametroPizarra === null) guardar(CLAVE.pizarra, pizarra ? '1' : '0');   // con ?pizarra= en la URL no se guarda nada
+  pintarPizarra();
+  girar(girado);       // vuelve a montar el tablero con el radio nuevo
+  ajustarTamano();
+  if (!pizarra) el.pizarra.focus({ preventScroll: true });
+}
+el.pizarra.addEventListener('click', () => ponerPizarra(true));
+el.salirPizarra.addEventListener('click', () => ponerPizarra(false));
+document.addEventListener('keydown', evento => {
+  if (evento.key === 'Escape' && pizarra && !evento.defaultPrevented && !document.querySelector('dialog[open]')) ponerPizarra(false);
+});
 el.pista.addEventListener('click', pedirPista);
 function cerrarDatos() {
   if (!el.dialogoDatos.open) return;
@@ -2925,12 +3376,23 @@ el.dialogoDatos.addEventListener('close', () => el.datos.setAttribute('aria-expa
 datos = leerDatos();
 pintarSonido();
 pintarTema();
+pintarPizarra();
 {
   const mac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
   el.deshacer.title = mac ? 'Deshacer (⌘Z)' : 'Deshacer (Ctrl+Z)';
   el.rehacer.title = mac ? 'Rehacer (⇧⌘Z)' : 'Rehacer (Ctrl+Mayús+Z)';
 }
 opciones = leerOpciones();
+// Enlace con la partida (§8.10): se muestra sin tocar lo guardado, como ?demo. Si no vale, se abre la página como sin parámetro.
+let partidaEnlace = null, enlaceMalo = false;
+if (demo === null && enlaceP !== null) {
+  try {
+    partidaEnlace = Partida.desdeEnlace(enlaceP);
+    const dentro = (n, [minimo, maximo]) => n >= minimo && n <= maximo;
+    if (!dentro(partidaEnlace.jugadores, LIMITES.jugadores) || !dentro(partidaEnlace.columnas, LIMITES.columnas) || !dentro(partidaEnlace.filas, LIMITES.filas)) throw new RangeError('fuera de lo que ofrece la interfaz');
+    sinGuardar = true;
+  } catch { partidaEnlace = null; enlaceMalo = true; }
+}
 if (demo !== null) {
   // Partida de demostración (capturas y pruebas): ignora lo guardado y no guarda nada.
   const p = new Partida();
@@ -2939,6 +3401,8 @@ if (demo !== null) {
     for (let f = 0; f < p.filas; f++) for (let c = 0; c < p.columnas; c++) if (p.tablero[f][c] === 0) p.jugar(c, f);
   }
   establecer(p, OPCIONES_DEFECTO);
+} else if (partidaEnlace) {
+  establecer(partidaEnlace, OPCIONES_DEFECTO);
 } else {
   let guardada = null, quienes = opciones;
   const texto = leer(CLAVE.partida);
@@ -2947,7 +3411,7 @@ if (demo !== null) {
       const d = JSON.parse(texto);
       if (d && typeof d.partida === 'string') {
         guardada = Partida.deserializar(d.partida);
-        quienes = normalizarOpciones({ ...opciones, tipos: d.tipos, niveles: d.niveles });
+        quienes = normalizarOpciones({ ...opciones, tipos: d.tipos, niveles: d.niveles, nombres: d.nombres });
       } else {
         guardada = Partida.deserializar(texto);   // formato de la primera versión: todos persona
         quienes = normalizarOpciones({ ...opciones, tipos: [] });
@@ -2955,6 +3419,7 @@ if (demo !== null) {
     } catch { guardada = null; quienes = opciones; /* partida guardada corrupta: se empieza otra */ }
   }
   establecer(guardada || new Partida(opcionesDeMotor(opciones)), guardada ? quienes : opciones);
+  if (enlaceMalo) avisar('Este enlace no tiene una partida válida', 4000, true);
 }
 // El tablero se vuelve a medir al cambiar el tamaño de la ventana, girar el móvil o cambiar de alto el marcador.
 if ('ResizeObserver' in window) new ResizeObserver(ajustarTamano).observe(el.zona);
