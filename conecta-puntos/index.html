@@ -2103,7 +2103,6 @@ const nombreCorto = nombreBase;   // sin «(máquina)»: para el aviso de la rev
 // Sujeto de una frase: «el jugador 2» con el nombre de siempre (los textos de hoy), «Ana» con uno propio.
 const sujetoCorto = j => nombrePropio(j) || `el jugador ${j}`;
 const sujeto = j => `${sujetoCorto(j)}${esMaquina(j) ? ' (máquina)' : ''}`;
-const mayuscula = t => t.charAt(0).toUpperCase() + t.slice(1);
 
 // ---------- almacenamiento (siempre protegido; en modo demo no se guarda nada) ----------
 function leer(clave) {
@@ -2746,7 +2745,7 @@ function revisarPerdidas(est) {
     perdidasAvisadas.add(j);
     if (avisar_ && !esMaquina(j)) {
       const texto = `${nombreCorto(j)}: ya no puedes ganar. Puedes rendirte o seguir jugando.`;
-      setTimeout(() => avisar(texto, 3000, true), 0);   // después de pintar la jugada y de su aviso de puntuación
+      setTimeout(() => avisar(texto, 3000, true), 0);   // después de pintar la jugada
     }
   }
 }
@@ -2938,10 +2937,8 @@ function jugar(c, f) {
   } else {
     sonido.pop();
     // Como en Scratch, se celebra cuando una jugada conecta puntos y sube la puntuación; un punto suelto, no.
-    if (r.mejora && r.conexiones.length > 0) {
-      sonido.logro();
-      avisar(`¡${mayuscula(sujetoCorto(r.jugador))} ya tiene ${puntosTexto(r.puntuacion)}!`);
-    }
+    // Solo con el sonido: el letrero «¡… ya tiene N puntos!» se quitó el 2026-10-29 (el marcador ya lo dice).
+    if (r.mejora && r.conexiones.length > 0) sonido.logro();
   }
   programarMaquina();
 }
